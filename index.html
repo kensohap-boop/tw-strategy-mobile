@@ -29,7 +29,7 @@
 .ltable th,.ltable td{padding:10px 5px;border-bottom:1px solid #294564;text-align:right}
 .ltable th:first-child,.ltable td:first-child{text-align:left}
 .ltable tr.active{background:#153653}
-</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V3.5・完整策略版</div>
+</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V3.6・完整策略版</div>
 <div class=tabs><div class="tab on" data-p=f>資金總覽</div><div class=tab data-p=l>正2策略</div><div class=tab data-p=s>個股</div><div class=tab data-p=a>統計分析</div></div>
 <section id=f class="page on"><div class=card><h2>資金總覽</h2><div class=hint>持股資訊由正2與個股頁自動彙總。</div><label class=m>目前可動用總資金（含持股市值）</label><input id=capital type=number placeholder="2500000"><div class=grid><div class=metric>正2目標 30%<b id=t30>—</b></div><div class=metric>單一個股 20%<b id=t20>—</b></div><div class=metric>個股上限 40%<b id=t40>—</b></div><div class=metric>個股目前市值<b id=fsv>—</b></div></div></div></section>
 <section id=l class=page>
@@ -114,17 +114,44 @@ function saveLeveragedPeak(){
 }
 async function refreshLeveragedMarket(){
  const l=levState();
+ let gotIndex=false, gotEtf=false, stamp='';
  try{
-   const [d,m]=await Promise.all([
-     fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()),
-     fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{})
-   ]);
-   const etf=d&&d['00631L'];
-   if(etf&&Number.isFinite(+etf.price)) l.price=+etf.price;
-   if(m&&m.market_filter&&Number.isFinite(+m.market_filter.price)) l.index=+m.market_filter.price;
-   l.updated=(m&&m.generated_at)||new Date().toLocaleString('zh-TW');
+   // TAIEX: use scanner metadata (same-origin, stable)
+   const m=await fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'})
+     .then(r=>r.ok?r.json():{});
+   if(m&&m.market_filter&&Number.isFinite(+m.market_filter.price)){
+     l.index=+m.market_filter.price; gotIndex=true;
+   }
+   stamp=(m&&m.generated_at)||'';
+
+   // 00631L: first try stocks.json, then fall back to TWSE official OpenAPI.
+   // The full-market scanner mainly contains 4-digit securities, so 00631L may be absent.
+   try{
+     const d=await fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json());
+     const etf=d&&d['00631L'];
+     if(etf&&Number.isFinite(+etf.price)){ l.price=+etf.price; gotEtf=true; }
+   }catch(e){}
+
+   if(!gotEtf){
+     const d=await fetch('https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL',{cache:'no-store'})
+       .then(r=>{if(!r.ok)throw new Error('TWSE '+r.status);return r.json()});
+     const row=Array.isArray(d)?d.find(x=>x.Code==='00631L'):null;
+     if(row){
+       const v=parseFloat(String(row.ClosingPrice??'').replace(/,/g,''));
+       if(Number.isFinite(v)){l.price=v;gotEtf=true;}
+     }
+   }
+
+   l.updated=stamp||new Date().toLocaleString('zh-TW');
    save(); renderLeveraged();
- }catch(e){ alert('行情更新失敗：'+(e.message||e)); }
+
+   if(!gotIndex||!gotEtf){
+     alert(`行情部分資料未取得：${!gotIndex?'加權指數 ':''}${!gotEtf?'00631L':''}`);
+   }
+ }catch(e){
+   save(); renderLeveraged();
+   alert('行情更新失敗：'+(e.message||e));
+ }
 }
 function addLeveragedBuy(){
  const l=levState(),p=+$('lBuyPrice').value||0,q=+$('lBuyLots').value||0;
