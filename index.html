@@ -3,163 +3,104 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111827">
-<link rel="apple-touch-icon" href="icon.png">
-<title>台股策略控制台 V2.3</title>
+<meta name="theme-color" content="#0b1220">
+<title>台股策略工具 V2.4</title>
 <style>
-:root{--bg:#f3f5f8;--card:#fff;--text:#111827;--muted:#6b7280;--line:#e5e7eb;--dark:#111827;--green:#059669;--yellow:#d97706;--red:#dc2626;--blue:#2563eb}
-*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang TC","Noto Sans TC",sans-serif;color:var(--text)}
-.wrap{max-width:780px;margin:auto;padding:14px 12px 40px}.head{display:flex;justify-content:space-between;align-items:center;margin:4px 4px 14px}
-h1{font-size:24px;margin:0} h2{font-size:20px;margin:0 0 14px}.ver{font-size:12px;background:#111827;color:#fff;border-radius:999px;padding:7px 10px}
-.card{background:#fff;border-radius:22px;padding:18px;margin-bottom:14px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}input{width:100%;border:1px solid var(--line);border-radius:13px;padding:13px 12px;font-size:17px;background:#fff}
-button{border:0;border-radius:14px;padding:13px 14px;font-size:16px;font-weight:750;background:var(--dark);color:#fff}.full{width:100%}.blue{background:var(--blue)}
-.row{display:flex;gap:8px;align-items:center;justify-content:space-between}.kpis{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:12px}
-.kpi{background:#f8fafc;border-radius:15px;padding:12px}.kpi small{display:block;color:var(--muted);margin-bottom:5px}.kpi b{font-size:19px}
-.live{display:flex;align-items:center;gap:7px;font-size:13px;color:var(--muted)}.dot{width:9px;height:9px;border-radius:50%;background:#9ca3af}.dot.ok{background:var(--green)}.dot.warn{background:var(--yellow)}
-.price{font-size:30px;font-weight:800}.sub{font-size:13px;color:var(--muted)}
-.status{border-radius:16px;padding:14px;margin-top:12px;font-weight:800;background:#f8fafc}.green{color:var(--green)}.yellow{color:var(--yellow)}.red{color:var(--red)}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:10px 5px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}
-.note{font-size:12px;color:var(--muted);line-height:1.55}.tiny{font-size:11px;color:var(--muted)}
-@media(max-width:560px){.grid,.kpis{grid-template-columns:1fr}.price{font-size:27px}}
+:root{--bg:#07111f;--card:#0f1c2e;--card2:#14243a;--text:#edf4ff;--muted:#9fb0c7;--line:#263a55;--good:#39d98a;--warn:#ffc857;--bad:#ff6b6b}
+*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#07111f,#0b1626 35%,#07111f);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif}
+.wrap{max-width:760px;margin:auto;padding:18px 14px 100px}.top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:14px}
+h1{font-size:23px;margin:0}.ver,.sub,.note{color:var(--muted);font-size:13px}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;position:sticky;top:0;z-index:5;padding:8px 0;background:#07111ff0}
+.tab{border:1px solid var(--line);background:#0d1929;color:var(--muted);border-radius:12px;padding:11px 6px;font-size:15px;font-weight:700}.tab.active{background:#143253;color:#fff;border-color:#2c78bd}
+.page{display:none}.page.active{display:block}.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:16px;padding:15px;margin:12px 0}.card h2{font-size:17px;margin:0 0 12px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}input{width:100%;background:#081320;border:1px solid var(--line);color:#fff;border-radius:10px;padding:11px;font-size:16px}
+.big{font-size:25px;font-weight:800}.kpi{padding:12px;background:#0a1727;border:1px solid var(--line);border-radius:12px}.kpi .t{font-size:12px;color:var(--muted)}.kpi .v{font-size:19px;font-weight:800;margin-top:4px}
+.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}.btn{border:0;background:#1677d2;color:white;border-radius:11px;padding:11px 14px;font-size:15px;font-weight:700}.btn2{border:1px solid var(--line);background:#10233a;color:#fff;border-radius:11px;padding:10px 12px;font-size:14px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}.pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#12243a;color:var(--muted);white-space:nowrap}
+table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 5px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}
+.stockitem{border:1px solid var(--line);border-radius:13px;padding:12px;margin:10px 0;background:#0a1727}.stockhead{display:flex;justify-content:space-between;gap:8px;align-items:center}.stockgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.xbtn{background:transparent;border:1px solid #713b45;color:#ff9aa6;border-radius:9px;padding:8px 10px}.status{padding:10px 12px;border-radius:11px;background:#0a1727;border:1px solid var(--line);font-weight:700}
+@media(max-width:520px){.grid3{grid-template-columns:1fr}.wrap{padding-left:12px;padding-right:12px}th,td{font-size:12px}}
 </style>
 </head>
 <body>
 <div class="wrap">
-<div class="head"><h1>台股策略控制台</h1><span class="ver">V2.3</span></div>
-
-<div class="card">
-  <div class="row">
-    <div><h2 style="margin-bottom:4px">自動行情</h2><div class="live"><span id="dot" class="dot"></span><span id="updated">讀取中…</span></div></div>
-    <button class="blue" onclick="loadMarket()">立即更新</button>
-  </div>
-  <div class="grid" style="margin-top:14px">
-    <div><label>加權指數</label><div class="price" id="idxShow">—</div><div class="sub" id="idxTime">—</div></div>
-    <div><label>00631L 元大台灣50正2</label><div class="price" id="etfShow">—</div><div class="sub" id="etfTime">—</div></div>
-  </div>
-  <p class="note">V2.3 不再由 Safari 直接呼叫 TWSE。GitHub Actions 於台股交易時段定期抓取資料並寫入 market.json，手機只讀取該檔案，因此較不受 CORS 限制。排程可能有數分鐘延遲，不等同券商逐筆即時報價。</p>
+<div class="top"><div><h1>台股策略工具</h1><div class="ver">V2.4 · 資金 / 正2 / 個股</div></div><div id="clock" class="ver"></div></div>
+<div class="tabs">
+<button class="tab active" data-page="fund">資金總覽</button>
+<button class="tab" data-page="lev">正2策略</button>
+<button class="tab" data-page="stocks">個股</button>
 </div>
 
-<div class="card">
-<h2>我的正2持倉</h2>
-<div class="grid">
-<div><label>目前可運用總資金（元）</label><input id="capital" type="number" value="1000000"></div>
-<div><label>本輪大盤最高點</label><input id="peak" type="number" step="0.01" placeholder="例如 46948.72"></div>
-<div><label>正2買入單價（元）</label><input id="buy" type="number" step="0.01" placeholder="例如 250"></div>
-<div><label>正2買入張數</label><input id="lots" type="number" step="0.001" placeholder="例如 1.5"></div>
-</div>
-<button class="full" style="margin-top:12px" onclick="calc()">重新計算</button>
-<div class="kpis">
-<div class="kpi"><small>持倉成本</small><b id="cost">—</b></div>
-<div class="kpi"><small>目前市值</small><b id="mv">—</b></div>
-<div class="kpi"><small>目前損益</small><b id="pnl">—</b></div>
-<div class="kpi"><small>正2市值/總資金</small><b id="alloc">—</b></div>
-</div>
-</div>
+<section id="fund" class="page active">
+<div class="card"><h2>資金配置</h2>
+<label>目前可動用總資金（含目前持倉市值）</label><input id="totalCapital" type="number" inputmode="decimal" placeholder="例如 2500000">
+<div class="grid3" style="margin-top:12px">
+<div class="kpi"><div class="t">正2目標 30%</div><div id="levTarget" class="v">—</div></div>
+<div class="kpi"><div class="t">單一新個股 20%</div><div id="stockOne" class="v">—</div></div>
+<div class="kpi"><div class="t">個股合計上限 40%</div><div id="stockMax" class="v">—</div></div>
+</div></div>
 
-<div class="card">
-<h2>加碼階梯</h2>
-<table><thead><tr><th>層級</th><th>觸發指數</th><th>正2估價</th><th>加碼金額</th></tr></thead><tbody id="ladder"></tbody></table>
-<div id="next" class="status">輸入本輪高點後即可計算。</div>
-<p class="note">規則：-15% 加10%、-30% 加15%、-45% 加20%、-60% 加15%。正2估價是依「目前正2價 ×〔1 + 2×(目標指數/目前指數−1)〕」做近似推估，實際價格會受每日重設、路徑與追蹤誤差影響。</p>
-</div>
+<div class="card"><h2>正2目前持倉</h2><div class="grid2">
+<div><label>損益平衡價</label><input id="levCost" type="number" step="0.01" inputmode="decimal" placeholder="34.83"></div>
+<div><label>持有張數</label><input id="levLots" type="number" step="0.001" inputmode="decimal" placeholder="13"></div>
+</div><div class="grid3" style="margin-top:12px">
+<div class="kpi"><div class="t">持有成本</div><div id="levCostValue" class="v">—</div></div>
+<div class="kpi"><div class="t">目前市值</div><div id="levMarketValue" class="v">—</div></div>
+<div class="kpi"><div class="t">未實現損益</div><div id="levPnL" class="v">—</div></div>
+</div><div id="levAllocationStatus" class="status" style="margin-top:12px">請先輸入總資金</div></div>
 
-<div class="card">
-<h2>+30% 再平衡</h2>
-<div class="kpis">
-<div class="kpi"><small>正2 +30% 價格</small><b id="rebPrice">—</b></div>
-<div class="kpi"><small>到價時持倉市值</small><b id="rebMV">—</b></div>
-<div class="kpi"><small>再平衡後正2目標</small><b id="rebTarget">—</b></div>
-<div class="kpi"><small>預估賣出張數</small><b id="sellLots">—</b></div>
-</div>
-<div id="reb" class="status">輸入買入價與張數即可計算。</div>
-</div>
+<div class="card"><div class="stockhead"><h2 style="margin:0">個股目前持倉</h2><button class="btn2" id="addStock">＋新增個股</button></div>
+<div id="stockHoldings"></div><div class="grid3" style="margin-top:12px">
+<div class="kpi"><div class="t">個股總成本</div><div id="stocksCost" class="v">—</div></div>
+<div class="kpi"><div class="t">個股總市值</div><div id="stocksValue" class="v">—</div></div>
+<div class="kpi"><div class="t">個股總損益</div><div id="stocksPnL" class="v">—</div></div>
+</div><div id="stockCapacityStatus" class="status" style="margin-top:12px">請先輸入總資金</div></div>
 
-<div class="card">
-<h2>提醒狀態</h2>
-<p id="alertStatus" class="status">每次開啟 App / 每 1 分鐘讀取 market.json 並檢查條件。</p>
-<p class="note">主畫面 App 開著時會自動檢查。完全關閉後，iPhone 不會讓這個靜態網站自行在背景執行；真正「網站沒開也推播」需再接 Telegram、Email 或其他推播服務。</p>
-</div>
+<div class="card"><h2>整體資金狀態</h2><div class="grid3">
+<div class="kpi"><div class="t">正2目前占比</div><div id="levPct" class="v">—</div></div>
+<div class="kpi"><div class="t">個股目前占比</div><div id="stocksPct" class="v">—</div></div>
+<div class="kpi"><div class="t">推估現金</div><div id="cashLeft" class="v">—</div></div>
+</div></div></section>
+
+<section id="lev" class="page">
+<div class="card"><div class="stockhead"><div><h2 style="margin:0">市場行情</h2><div id="marketTime" class="sub">讀取 market.json…</div></div><button id="refreshMarket" class="btn">更新行情</button></div>
+<div class="grid2" style="margin-top:12px"><div class="kpi"><div class="t">加權指數</div><div id="taiex" class="big">—</div></div><div class="kpi"><div class="t">00631L</div><div id="levPrice" class="big">—</div></div></div></div>
+<div class="card"><h2>本輪高點</h2><label>加權指數本輪高點</label><input id="cyclePeak" type="number" step="0.01" inputmode="decimal" placeholder="例如 55234"><div class="note">加碼觸發只依「加權指數」判斷，不再用正2價格線性估算。</div></div>
+<div class="card"><h2>加碼階梯</h2><table><thead><tr><th>回檔</th><th>觸發指數</th><th>本次加碼</th><th>累計正2</th></tr></thead><tbody id="ladder"></tbody></table><div id="drawdownStatus" class="status" style="margin-top:12px">等待行情與本輪高點</div></div>
+<div class="card"><h2>+30% 再平衡</h2><div class="row"><span>以損益平衡價為基準</span><strong id="rebalancePrice">—</strong></div><div class="sub">整體正2部位達 +30% 時，將正2調回總資金 30%，其餘回到現金。</div></div>
+</section>
+
+<section id="stocks" class="page">
+<div class="card"><h2>個股資金規則</h2><div class="row"><span>單一新部位</span><strong>20%</strong></div><div class="row"><span>所有個股合計上限</span><strong>40%</strong></div><div class="sub">已有股票獲利了結一半後，依目前個股市值占總資金比例重新判斷是否有足夠 20% 額度開新部位。</div></div>
+<div class="card"><h2>買入條件檢查</h2><div class="sub">V2.4 先固定你的判斷規則；自動掃描資料介面下一步接入。</div>
+<div style="margin-top:10px"><div class="row"><span>股價在年線之上</span><span class="pill">必要</span></div><div class="row"><span>年線走平或上彎</span><span class="pill">必要</span></div><div class="row"><span>5 / 10 / 20 日均線收斂</span><span class="pill">≤ 5%</span></div><div class="row"><span>成交量</span><span class="pill">&gt; 1,000 張</span></div><div class="row"><span>KD 向上</span><span class="pill">必要</span></div><div class="row"><span>月營收創高 / 強勢</span><span class="pill">必要</span></div></div></div>
+<div class="card"><h2>目前個股部位</h2><div id="stockSummaryMirror"></div></div>
+</section>
 </div>
 
 <script>
-const MARKET_URL='https://raw.githubusercontent.com/kensohap-boop/tw-strategy-mobile/main/market.json';
-let IDX=NaN, ETF=NaN, lastAlert='';
 const $=id=>document.getElementById(id);
-const num=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—';
-const money=n=>Number.isFinite(n)?'NT$ '+Math.round(n).toLocaleString('zh-TW'):'—';
-['capital','peak','buy','lots'].forEach(id=>{
-  const el=$(id),v=localStorage.getItem('v23_'+id); if(v!==null)el.value=v;
-  el.addEventListener('input',()=>{localStorage.setItem('v23_'+id,el.value);calc()});
-});
-
-async function loadMarket(){
-  try{
-    const r=await fetch(MARKET_URL+'?t='+Date.now(),{cache:'no-store'});
-    if(!r.ok) throw new Error(r.status);
-    const d=await r.json();
-    IDX=Number(d.taiex?.price); ETF=Number(d.etf00631L?.price);
-    $('idxShow').textContent=num(IDX); $('etfShow').textContent=Number.isFinite(ETF)?'$ '+num(ETF):'—';
-    $('idxTime').textContent=d.taiex?.market_time||d.updated_at||'—';
-    $('etfTime').textContent=d.etf00631L?.market_time||d.updated_at||'—';
-    $('updated').textContent='資料更新：'+(d.updated_at||'—');
-    $('dot').className='dot ok';
-    calc();
-  }catch(e){
-    $('updated').textContent='market.json 尚未建立或讀取失敗';
-    $('dot').className='dot warn';
-  }
-}
-
-function maybeAlert(text){
-  if(text && text!==lastAlert){
-    lastAlert=text;
-    $('alertStatus').textContent=text;
-    if(navigator.vibrate) navigator.vibrate([150,80,150]);
-  }
-}
-
-function calc(){
-  const capital=+$('capital').value,peak=+$('peak').value,buy=+$('buy').value,lots=+$('lots').value,shares=lots*1000;
-  const cost=buy*shares,mv=ETF*shares,pnl=mv-cost;
-  $('cost').textContent=money(cost); $('mv').textContent=money(mv);
-  $('pnl').textContent=(Number.isFinite(pnl)&&cost>0)?((pnl>=0?'+':'')+money(pnl)):'—';
-  $('alloc').textContent=(capital>0&&Number.isFinite(mv))?(mv/capital*100).toFixed(1)+'%':'—';
-
-  const steps=[[-15,10],[-30,15],[-45,20],[-60,15]];
-  let rows='', reached=null, next=null;
-  for(const [dd,add] of steps){
-    const trigger=peak>0?peak*(1+dd/100):NaN;
-    let est=NaN;
-    if(IDX>0&&ETF>0&&trigger>0){est=ETF*(1+2*(trigger/IDX-1)); if(est<0)est=0;}
-    const hit=(IDX>0&&trigger>0&&IDX<=trigger);
-    if(hit) reached={dd,add,trigger,est}; else if(!next&&trigger>0) next={dd,add,trigger,est};
-    rows+=`<tr><td>${hit?'✅ ':''}${dd}%</td><td>${num(trigger)}</td><td>${Number.isFinite(est)?'$ '+num(est):'—'}</td><td>${money(capital*add/100)}</td></tr>`;
-  }
-  $('ladder').innerHTML=rows;
-  if(reached){
-    $('next').className='status red';
-    $('next').textContent=`🔴 已觸發 ${reached.dd}%：本層加碼 ${reached.add}%（${money(capital*reached.add/100)}）`;
-    maybeAlert(`🔴 加碼提醒：已到 ${reached.dd}% 層級`);
-  }else if(next&&IDX>0){
-    const dist=(IDX/next.trigger-1)*100;
-    $('next').className='status green';
-    $('next').textContent=`🟢 下一關 ${next.dd}%：指數 ${num(next.trigger)}，距離約 ${Math.abs(dist).toFixed(1)}%；正2估價約 $${num(next.est)}`;
-  }
-
-  if(buy>0&&shares>0){
-    const rp=buy*1.30, atMV=rp*shares, totalAt=capital+(atMV-cost), target=totalAt*0.30, sell=Math.max(0,atMV-target), sl=sell/rp/1000;
-    $('rebPrice').textContent='$ '+num(rp); $('rebMV').textContent=money(atMV); $('rebTarget').textContent=money(target); $('sellLots').textContent=sl.toFixed(3)+' 張';
-    if(ETF>=rp){
-      $('reb').className='status green'; $('reb').textContent=`🟢 已達 +30% 再平衡價 $${num(rp)}。`;
-      maybeAlert(`🟢 再平衡提醒：00631L 已達 +30% 目標價 $${num(rp)}`);
-    }else if(ETF>0){
-      $('reb').className='status'; $('reb').textContent=`距離 +30% 目標價 $${num(rp)} 尚差約 ${((rp/ETF-1)*100).toFixed(1)}%。`;
-    }
-  }
-}
-loadMarket();
-setInterval(loadMarket,60000);
+const fmt=n=>Number.isFinite(n)?new Intl.NumberFormat('zh-TW',{maximumFractionDigits:0}).format(Math.round(n)):'—';
+const fmt2=n=>Number.isFinite(n)?new Intl.NumberFormat('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n):'—';
+const num=id=>parseFloat($(id).value)||0, KEY='twStrategyV24';
+let state={totalCapital:0,levCost:0,levLots:0,cyclePeak:0,stocks:[]}, market={taiex:0,lev:0,time:''};
+function load(){try{state={...state,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){};$('totalCapital').value=state.totalCapital||'';$('levCost').value=state.levCost||'';$('levLots').value=state.levLots||'';$('cyclePeak').value=state.cyclePeak||'';if(!Array.isArray(state.stocks))state.stocks=[];renderStocks();calc()}
+function save(){localStorage.setItem(KEY,JSON.stringify(state))}
+function syncState(){state.totalCapital=num('totalCapital');state.levCost=num('levCost');state.levLots=num('levLots');state.cyclePeak=num('cyclePeak');save();calc()}
+['totalCapital','levCost','levLots','cyclePeak'].forEach(id=>$(id).addEventListener('input',syncState));
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.page).classList.add('active')}));
+function renderStocks(){const box=$('stockHoldings');box.innerHTML='';if(!state.stocks.length)box.innerHTML='<div class="sub" style="padding:14px 0">尚未新增個股持倉。</div>';state.stocks.forEach((s,i)=>{const d=document.createElement('div');d.className='stockitem';d.innerHTML=`<div class="stockhead"><strong>${s.code||'未填代號'} ${s.name||''}</strong><button class="xbtn" data-del="${i}">刪除</button></div><div class="stockgrid"><div><label>股票代號</label><input data-i="${i}" data-k="code" value="${s.code||''}" inputmode="numeric"></div><div><label>名稱</label><input data-i="${i}" data-k="name" value="${s.name||''}"></div><div><label>成本價</label><input data-i="${i}" data-k="cost" type="number" step="0.01" value="${s.cost||''}"></div><div><label>持有股數</label><input data-i="${i}" data-k="shares" type="number" step="1" value="${s.shares||''}"></div><div style="grid-column:1/-1"><label>目前股價</label><input data-i="${i}" data-k="price" type="number" step="0.01" value="${s.price||''}"></div></div>`;box.appendChild(d)});box.querySelectorAll('input[data-i]').forEach(inp=>inp.addEventListener('input',e=>{const i=+e.target.dataset.i,k=e.target.dataset.k;state.stocks[i][k]=['cost','shares','price'].includes(k)?(parseFloat(e.target.value)||0):e.target.value;save();calc()}));box.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{state.stocks.splice(+b.dataset.del,1);save();renderStocks();calc()}))}
+$('addStock').addEventListener('click',()=>{state.stocks.push({code:'',name:'',cost:0,shares:0,price:0});save();renderStocks();calc()});
+function calc(){const T=state.totalCapital,lp=market.lev,lots=state.levLots,cost=state.levCost,levCostVal=cost*lots*1000,levValue=lp*lots*1000,levPnl=levValue-levCostVal,stocksCost=state.stocks.reduce((a,s)=>a+(+s.cost||0)*(+s.shares||0),0),stocksValue=state.stocks.reduce((a,s)=>a+(+s.price||0)*(+s.shares||0),0),stocksPnl=stocksValue-stocksCost;
+$('levTarget').textContent=T?'$'+fmt(T*.30):'—';$('stockOne').textContent=T?'$'+fmt(T*.20):'—';$('stockMax').textContent=T?'$'+fmt(T*.40):'—';$('levCostValue').textContent=cost&&lots?'$'+fmt(levCostVal):'—';$('levMarketValue').textContent=lp&&lots?'$'+fmt(levValue):'—';$('levPnL').textContent=lp&&lots?(levPnl>=0?'+':'')+'$'+fmt(levPnl):'—';$('levPnL').className='v '+(levPnl>=0?'good':'bad');$('stocksCost').textContent=state.stocks.length?'$'+fmt(stocksCost):'—';$('stocksValue').textContent=state.stocks.length?'$'+fmt(stocksValue):'—';$('stocksPnL').textContent=state.stocks.length?(stocksPnl>=0?'+':'')+'$'+fmt(stocksPnl):'—';$('stocksPnL').className='v '+(stocksPnl>=0?'good':'bad');
+if(T){const levPct=levValue/T*100,stockPct=stocksValue/T*100,cash=T-levValue-stocksValue;$('levPct').textContent=fmt2(levPct)+'%';$('stocksPct').textContent=fmt2(stockPct)+'%';$('cashLeft').textContent='$'+fmt(cash);const levGap=T*.30-levValue;$('levAllocationStatus').innerHTML=levGap>0?`正2距離 30% 目標還差 <span class="good">$${fmt(levGap)}</span>`:`正2目前已達／超過 30% 目標 <span class="warn">$${fmt(Math.abs(levGap))}</span>`;const cap=T*.40-stocksValue,one=T*.20;$('stockCapacityStatus').innerHTML=cap>=one?`🟢 可新增 1 檔，單檔建議投入 <span class="good">$${fmt(one)}</span>；個股剩餘額度 $${fmt(cap)}`:`🟡 個股剩餘額度 <span class="warn">$${fmt(Math.max(0,cap))}</span>，不足完整 20% 新部位`}else{$('levPct').textContent=$('stocksPct').textContent=$('cashLeft').textContent='—';$('levAllocationStatus').textContent=$('stockCapacityStatus').textContent='請先輸入總資金'}
+$('rebalancePrice').textContent=cost?'$'+fmt2(cost*1.30):'—';renderLadder();renderStockMirror()}
+function renderLadder(){const peak=state.cyclePeak,T=state.totalCapital,rows=[[-15,.10,.40],[-30,.15,.55],[-45,.20,.75],[-60,.15,.90]];$('ladder').innerHTML=rows.map(r=>`<tr><td>${r[0]}%</td><td>${peak?fmt(peak*(1+r[0]/100)):'—'}</td><td>${T?'$'+fmt(T*r[1]):'—'}</td><td>${Math.round(r[2]*100)}%</td></tr>`).join('');if(peak&&market.taiex){const dd=(market.taiex/peak-1)*100;let msg=`目前自高點回檔 ${fmt2(dd)}%。`;if(dd<=-60)msg+=' 🔴 已達 -60%';else if(dd<=-45)msg+=' 🔴 已達 -45%';else if(dd<=-30)msg+=' 🟠 已達 -30%';else if(dd<=-15)msg+=' 🟡 已達 -15%';else msg+=' 尚未到 -15% 第一階。';$('drawdownStatus').textContent=msg}else $('drawdownStatus').textContent='等待行情與本輪高點'}
+function renderStockMirror(){const box=$('stockSummaryMirror');if(!state.stocks.length){box.innerHTML='<div class="sub">尚未建立個股持倉。</div>';return}box.innerHTML=state.stocks.map(s=>{const v=(+s.price||0)*(+s.shares||0),c=(+s.cost||0)*(+s.shares||0),p=v-c;return `<div class="row"><span><strong>${s.code||'—'} ${s.name||''}</strong><br><span class="sub">${fmt(s.shares||0)} 股</span></span><span style="text-align:right">$${fmt(v)}<br><span class="${p>=0?'good':'bad'}">${p>=0?'+':''}$${fmt(p)}</span></span></div>`}).join('')}
+function walk(o,cb){if(!o||typeof o!=='object')return;for(const [k,v] of Object.entries(o)){cb(k,v);if(v&&typeof v==='object')walk(v,cb)}}
+function tryPrice(o){return parseFloat(o?.price??o?.last??o?.z??o?.close??0)||0}
+function parseMarket(j){let ta=0,lv=0,time=j.updated_at||j.time||'';for(const k of ['taiex','TAIEX','t00','index'])if(j[k])ta=tryPrice(j[k])||ta;for(const k of ['00631L','lev','etf','yuanta2x'])if(j[k])lv=tryPrice(j[k])||lv;walk(j,(k,v)=>{const ks=String(k).toLowerCase();if(!ta&&(ks.includes('taiex')||ks==='t00'||ks.includes('加權')))ta=tryPrice(v)||parseFloat(v)||0;if(!lv&&(ks.includes('00631l')||ks.includes('正2')))lv=tryPrice(v)||parseFloat(v)||0;if(!time&&['updated_at','market_time','time'].includes(ks)&&typeof v==='string')time=v});return{taiex:ta,lev:lv,time}}
+async function loadMarket(){$('marketTime').textContent='更新中…';try{const r=await fetch('market.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error();const j=await r.json();market=parseMarket(j);$('taiex').textContent=market.taiex?fmt2(market.taiex):'—';$('levPrice').textContent=market.lev?'$'+fmt2(market.lev):'—';$('marketTime').textContent=market.time?('資料更新：'+market.time):'已讀取 market.json'}catch(e){$('marketTime').textContent='行情讀取失敗，請稍後重試'}calc()}
+$('refreshMarket').addEventListener('click',loadMarket);setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})},1000);load();loadMarket();
 </script>
-</body>
-</html>
+</body></html>
