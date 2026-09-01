@@ -1,7 +1,15 @@
 {
-  "generated_at": "2026-09-01 22:57:13",
+  "generated_at": "2026-09-02 07:25:36",
   "basis": "support_close",
   "window_trading_days": 10,
+  "config": {
+    "version": "2026-09-02.1",
+    "compact_ma_pct": 0.05,
+    "min_avg_volume_lots": 10000.0,
+    "volume_multiplier": 2.0,
+    "support_max_gap_pct": 0.05,
+    "tracking_days": 10
+  },
   "groups": [
     {
       "group": "A",
