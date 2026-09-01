@@ -1,0 +1,75 @@
+name: Update market data
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 15:00 Taiwan, Monday-Friday
+    - cron: "0 7 * * 1-5"
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Update TAIEX and 00631L
+        run: |
+          python - <<'PY'
+          import json, urllib.request, datetime
+
+          def get_json(url):
+              req = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0"})
+              with urllib.request.urlopen(req, timeout=30) as r:
+                  return json.loads(r.read().decode("utf-8"))
+
+          data = get_json("https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL")
+          row = next((x for x in data if str(x.get("Code","")).strip() == "00631L"), None)
+          if not row:
+              raise SystemExit("00631L not found in TWSE STOCK_DAY_ALL")
+          etf = float(str(row.get("ClosingPrice","")).replace(",",""))
+
+          # Preserve existing TAIEX data already maintained by the repo.
+          try:
+              with open("market.json","r",encoding="utf-8") as f:
+                  old=json.load(f)
+          except Exception:
+              old={}
+
+          taiex = old.get("taiex")
+          if taiex is None:
+              taiex = old.get("TAIEX", old.get("index", old.get("market_index")))
+
+          out = dict(old) if isinstance(old,dict) else {}
+          out["00631L"] = {"price": etf}
+          out["etf_price"] = etf
+          out["updated_at"] = datetime.datetime.now(
+              datetime.timezone(datetime.timedelta(hours=8))
+          ).strftime("%Y-%m-%d %H:%M:%S")
+
+          with open("market.json","w",encoding="utf-8") as f:
+              json.dump(out,f,ensure_ascii=False,indent=2)
+
+          print("00631L:", etf)
+          print("TAIEX preserved:", taiex)
+          PY
+
+      - name: Commit market data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add market.json
+          if git diff --cached --quiet; then
+            echo "No change"
+          else
+            git commit -m "Update market data"
+            git pull --rebase origin main
+            git push
+          fi
