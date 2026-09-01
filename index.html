@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>台股策略控制台 V2 Mobile</title>
+<style>
+:root{
+  --bg:#f5f6f8; --card:#ffffff; --text:#111827; --muted:#6b7280;
+  --ok:#0a7d43; --warn:#b36b00; --bad:#b42318; --line:#e5e7eb; --accent:#111827;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans TC",sans-serif}
+.wrap{max-width:720px;margin:auto;padding:16px 14px 40px}
+h1{font-size:24px;margin:8px 0 4px}
+.sub{color:var(--muted);font-size:14px;margin-bottom:14px}
+.card{background:var(--card);border-radius:18px;padding:16px;margin:12px 0;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric{background:#f9fafb;border:1px solid var(--line);border-radius:14px;padding:12px}
+.metric b{display:block;font-size:21px;margin-top:4px}
+label{display:block;font-size:13px;color:var(--muted);margin-top:10px;margin-bottom:5px}
+input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:12px;font-size:16px;background:white}
+button{width:100%;padding:14px;border:0;border-radius:14px;font-size:17px;font-weight:700;background:var(--accent);color:white;margin-top:14px}
+.status{padding:12px 14px;border-radius:14px;font-weight:700;margin-top:12px}
+.ok{background:#eaf7f0;color:var(--ok)}
+.warn{background:#fff4df;color:var(--warn)}
+.bad{background:#fdecec;color:var(--bad)}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th,td{padding:10px 6px;border-bottom:1px solid var(--line);text-align:left}
+small{color:var(--muted)}
+.tabs{display:flex;gap:8px;overflow:auto;padding-bottom:4px}
+.tab{white-space:nowrap;padding:10px 12px;background:white;border:1px solid var(--line);border-radius:999px;font-size:14px}
+.tab.active{background:#111827;color:white}
+.section{display:none}.section.active{display:block}
+.note{font-size:13px;color:var(--muted);line-height:1.5}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📈 台股策略控制台 V2</h1>
+  <div class="sub">手機直接開啟版・資料只存在此裝置</div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('dash',this)">Dashboard</button>
+    <button class="tab" onclick="showTab('lev',this)">正2管理</button>
+    <button class="tab" onclick="showTab('stock',this)">個股判定</button>
+    <button class="tab" onclick="showTab('hold',this)">持股管理</button>
+  </div>
+
+  <section id="dash" class="section active">
+    <div class="card">
+      <div class="grid">
+        <div class="metric">核心正2<b>30%</b></div>
+        <div class="metric">最高投入<b>90%</b></div>
+        <div class="metric">保留現金<b>≥10%</b></div>
+        <div class="metric">再平衡<b>+30%</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <h3>熊市加碼階梯</h3>
+      <table>
+        <tr><th>大盤回撤</th><th>本次</th><th>累計</th></tr>
+        <tr><td>初始</td><td>30%</td><td>30%</td></tr>
+        <tr><td>-15%</td><td>+10%</td><td>40%</td></tr>
+        <tr><td>-30%</td><td>+15%</td><td>55%</td></tr>
+        <tr><td>-45%</td><td>+20%</td><td>75%</td></tr>
+        <tr><td>-60%</td><td>+15%</td><td>90%</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="lev" class="section">
+    <div class="card">
+      <h3>正2資金管理</h3>
+      <label>目前總資產（元）</label><input id="assets" type="number" value="1000000">
+      <label>目前正2市值（元）</label><input id="levValue" type="number" value="300000">
+      <label>目前正2累計成本（元）</label><input id="levCost" type="number" value="300000">
+      <label>本輪大盤最高收盤</label><input id="cycleHigh" type="number" value="30000">
+      <label>目前大盤收盤</label><input id="marketClose" type="number" value="28500">
+      <button onclick="calcLev()">計算正2訊號</button>
+      <div id="levResult"></div>
+    </div>
+  </section>
+
+  <section id="stock" class="section">
+    <div class="card">
+      <h3>個股進場判定</h3>
+      <label>大盤多頭條件成立？</label>
+      <select id="marketBull"><option value="1">是</option><option value="0">否</option></select>
+      <label>20日平均成交量（張）</label><input id="avgVol" type="number" value="12000">
+      <label>突破日成交量（張）</label><input id="breakVol" type="number" value="26000">
+      <label>MA5</label><input id="ma5s" type="number" value="101">
+      <label>MA10</label><input id="ma10s" type="number" value="100">
+      <label>MA20</label><input id="ma20s" type="number" value="99">
+      <label>是否突破整理區？</label>
+      <select id="isBreak"><option value="1">是</option><option value="0">否</option></select>
+      <label>突破日收盤</label><input id="breakClose" type="number" value="105">
+      <label>第二日接近收盤價</label><input id="day2Close" type="number" value="108">
+      <label>第二日仍站穩 MA5/10/20？</label>
+      <select id="aboveMas"><option value="1">是</option><option value="0">否</option></select>
+      <button onclick="calcStock()">判斷是否可進場</button>
+      <div id="stockResult"></div>
+    </div>
+  </section>
+
+  <section id="hold" class="section">
+    <div class="card">
+      <h3>持股管理</h3>
+      <label>進場成本</label><input id="entry" type="number" value="100">
+      <label>目前收盤</label><input id="closep" type="number" value="110">
+      <label>MA5</label><input id="ma5h" type="number" value="108">
+      <label>MA10</label><input id="ma10h" type="number" value="105">
+      <label>已執行 +20% 賣半？</label>
+      <select id="halfTaken"><option value="0">否</option><option value="1">是</option></select>
+      <button onclick="calcHold()">計算持股訊號</button>
+      <div id="holdResult"></div>
+    </div>
+  </section>
+
+  <div class="card">
+    <div class="note">
+      此手機版可直接離線使用，主要負責資金與訊號判定；目前不會自動抓全台股行情，也不會自動下單。所有輸入可保存在此裝置瀏覽器。
+    </div>
+  </div>
+</div>
+
+<script>
+function showTab(id,btn){
+  document.querySelectorAll('.section').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById(id).classList.add('active'); btn.classList.add('active');
+}
+function box(cls,txt){return `<div class="status ${cls}">${txt}</div>`}
+function v(id){return parseFloat(document.getElementById(id).value)||0}
+function calcLev(){
+  const a=v('assets'), lv=v('levValue'), lc=v('levCost'), h=v('cycleHigh'), m=v('marketClose');
+  if(!a||!lc||!h){levResult.innerHTML=box('bad','資料不足');return}
+  const alloc=lv/a, ret=lv/lc-1, dd=m/h-1;
+  let msg=`正2占比 ${(alloc*100).toFixed(1)}%｜正2報酬 ${(ret*100).toFixed(1)}%｜大盤回撤 ${(dd*100).toFixed(1)}%`;
+  let act='';
+  if(ret>=.30){
+    const target=a*.30, sell=Math.max(0,lv-target);
+    act=box('ok',`🟢 +30%再平衡成立：正2目標約 ${Math.round(target).toLocaleString()} 元，約減碼 ${Math.round(sell).toLocaleString()} 元。`);
+  }else if(dd<=-.60) act=box('bad','🔔 -60%層：本輪若尚未觸發，正2加碼 +15%。');
+  else if(dd<=-.45) act=box('warn','🔔 -45%層：本輪若尚未觸發，正2加碼 +20%。');
+  else if(dd<=-.30) act=box('warn','🔔 -30%層：本輪若尚未觸發，正2加碼 +15%。');
+  else if(dd<=-.15) act=box('warn','🔔 -15%層：本輪若尚未觸發，正2加碼 +10%。');
+  else act=box('ok','🟢 尚未觸發新的回撤加碼層。');
+  levResult.innerHTML=`<p>${msg}</p>${act}`;
+  save();
+}
+function calcStock(){
+  const bull=document.getElementById('marketBull').value==='1';
+  const av=v('avgVol'), bv=v('breakVol');
+  const mas=[v('ma5s'),v('ma10s'),v('ma20s')];
+  const mean=mas.reduce((a,b)=>a+b,0)/3;
+  const spread=(Math.max(...mas)-Math.min(...mas))/mean;
+  const br=document.getElementById('isBreak').value==='1';
+  const bc=v('breakClose'), d2=v('day2Close');
+  const above=document.getElementById('aboveMas').value==='1';
+  const gain=bc?d2/bc-1:99;
+  const checks=[
+    ['大盤多頭',bull],['20日均量 ≥ 10,000張',av>=10000],
+    ['MA5/10/20收斂 ≤5%',spread<=.05],['價格突破',br],
+    ['突破量 ≥ 20日均量2倍',bv>=av*2],['第二日仍站均線',above],
+    ['第二日漲幅 ≤5%',gain<=.05]
+  ];
+  let t='<table><tr><th>條件</th><th>結果</th></tr>'+checks.map(x=>`<tr><td>${x[0]}</td><td>${x[1]?'✅':'❌'}</td></tr>`).join('')+'</table>';
+  const ok=checks.every(x=>x[1]);
+  t+=ok?box('ok',`🟢 可進場｜第二日相對突破日 ${(gain*100).toFixed(2)}%`)
+       :(gain>.05?box('warn','🟡 超過5%追價上限：不追。'):box('bad','🔴 不符合完整進場條件。'));
+  stockResult.innerHTML=t; save();
+}
+function calcHold(){
+  const e=v('entry'), c=v('closep'), m5=v('ma5h'), m10=v('ma10h');
+  const half=document.getElementById('halfTaken').value==='1';
+  if(!e){holdResult.innerHTML=box('bad','資料不足');return}
+  const r=c/e-1;
+  let out=`<p>目前報酬 ${(r*100).toFixed(2)}%</p>`;
+  if(c<m10) out+=box('bad','🔴 收盤跌破MA10：剩餘部位全部出場。');
+  else if(c<m5 && !half) out+=box('warn','🟡 收盤跌破MA5：減碼50%。');
+  else if(r>=.20 && !half) out+=box('ok','🟢 達+20%：賣出50%，剩餘部位續抱。');
+  else if(half && c<=e) out+=box('bad','🔴 剩餘部位回到原始成本：出場。');
+  else out+=box('ok','🟢 暫無出場訊號。');
+  holdResult.innerHTML=out; save();
+}
+function save(){
+  const ids=['assets','levValue','levCost','cycleHigh','marketClose','marketBull','avgVol','breakVol','ma5s','ma10s','ma20s','isBreak','breakClose','day2Close','aboveMas','entry','closep','ma5h','ma10h','halfTaken'];
+  const data={}; ids.forEach(id=>data[id]=document.getElementById(id).value);
+  localStorage.setItem('twStrategyV2',JSON.stringify(data));
+}
+function load(){
+  try{
+    const data=JSON.parse(localStorage.getItem('twStrategyV2')||'{}');
+    Object.entries(data).forEach(([id,val])=>{const el=document.getElementById(id); if(el) el.value=val});
+  }catch(e){}
+}
+load();
+</script>
+</body>
+</html>
