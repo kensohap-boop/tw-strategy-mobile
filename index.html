@@ -1,106 +1,76 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0b1220">
-<title>台股策略工具 V2.4</title>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>台股策略工具 V2.5</title>
 <style>
-:root{--bg:#07111f;--card:#0f1c2e;--card2:#14243a;--text:#edf4ff;--muted:#9fb0c7;--line:#263a55;--good:#39d98a;--warn:#ffc857;--bad:#ff6b6b}
-*{box-sizing:border-box}body{margin:0;background:linear-gradient(180deg,#07111f,#0b1626 35%,#07111f);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif}
-.wrap{max-width:760px;margin:auto;padding:18px 14px 100px}.top{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;margin-bottom:14px}
-h1{font-size:23px;margin:0}.ver,.sub,.note{color:var(--muted);font-size:13px}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;position:sticky;top:0;z-index:5;padding:8px 0;background:#07111ff0}
-.tab{border:1px solid var(--line);background:#0d1929;color:var(--muted);border-radius:12px;padding:11px 6px;font-size:15px;font-weight:700}.tab.active{background:#143253;color:#fff;border-color:#2c78bd}
-.page{display:none}.page.active{display:block}.card{background:linear-gradient(180deg,var(--card2),var(--card));border:1px solid var(--line);border-radius:16px;padding:15px;margin:12px 0}.card h2{font-size:17px;margin:0 0 12px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
-label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}input{width:100%;background:#081320;border:1px solid var(--line);color:#fff;border-radius:10px;padding:11px;font-size:16px}
-.big{font-size:25px;font-weight:800}.kpi{padding:12px;background:#0a1727;border:1px solid var(--line);border-radius:12px}.kpi .t{font-size:12px;color:var(--muted)}.kpi .v{font-size:19px;font-weight:800;margin-top:4px}
-.good{color:var(--good)}.bad{color:var(--bad)}.warn{color:var(--warn)}.btn{border:0;background:#1677d2;color:white;border-radius:11px;padding:11px 14px;font-size:15px;font-weight:700}.btn2{border:1px solid var(--line);background:#10233a;color:#fff;border-radius:11px;padding:10px 12px;font-size:14px}
-.row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-top:1px solid var(--line)}.row:first-child{border-top:0}.pill{font-size:12px;padding:4px 8px;border-radius:999px;background:#12243a;color:var(--muted);white-space:nowrap}
-table{width:100%;border-collapse:collapse;font-size:13px}th,td{padding:9px 5px;border-bottom:1px solid var(--line);text-align:right}th:first-child,td:first-child{text-align:left}
-.stockitem{border:1px solid var(--line);border-radius:13px;padding:12px;margin:10px 0;background:#0a1727}.stockhead{display:flex;justify-content:space-between;gap:8px;align-items:center}.stockgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.xbtn{background:transparent;border:1px solid #713b45;color:#ff9aa6;border-radius:9px;padding:8px 10px}.status{padding:10px 12px;border-radius:11px;background:#0a1727;border:1px solid var(--line);font-weight:700}
-@media(max-width:520px){.grid3{grid-template-columns:1fr}.wrap{padding-left:12px;padding-right:12px}th,td{font-size:12px}}
-</style>
-</head>
-<body>
-<div class="wrap">
-<div class="top"><div><h1>台股策略工具</h1><div class="ver">V2.4 · 資金 / 正2 / 個股</div></div><div id="clock" class="ver"></div></div>
-<div class="tabs">
-<button class="tab active" data-page="fund">資金總覽</button>
-<button class="tab" data-page="lev">正2策略</button>
-<button class="tab" data-page="stocks">個股</button>
-</div>
+:root{--bg:#071426;--card:#10233b;--card2:#09182a;--line:#294564;--txt:#f5f7fb;--muted:#9eabc0;--blue:#2d8cff;--green:#36d28c;--red:#ff6b78}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC",sans-serif}
+.wrap{max-width:760px;margin:auto;padding:24px 22px 100px}.top{display:flex;justify-content:space-between;align-items:end}.top h1{font-size:30px;margin:0}.muted{color:var(--muted)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:28px 0}.tab{padding:16px 6px;border:1px solid var(--line);border-radius:18px;text-align:center;font-weight:700;color:var(--muted)}.tab.active{background:#173a61;border-color:#3598ff;color:white}
+.page{display:none}.page.active{display:block}.card{background:var(--card);border:1px solid var(--line);border-radius:26px;padding:24px;margin:0 0 20px}.card h2{margin:0 0 18px;font-size:24px}
+input{width:100%;background:var(--card2);color:white;border:1px solid var(--line);border-radius:16px;padding:16px;font-size:19px;margin:7px 0 14px}
+button{border:0;border-radius:15px;padding:13px 17px;background:var(--blue);color:white;font-weight:700;font-size:16px}.ghost{background:transparent;border:1px solid var(--line)}.danger{background:#5a2430}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.metric{background:var(--card2);border:1px solid var(--line);border-radius:18px;padding:17px}.metric b{display:block;font-size:23px;margin-top:8px}.wide{grid-column:1/-1}
+.row{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid var(--line);padding:14px 0}.good{color:var(--green)}.bad{color:var(--red)}.pill{padding:6px 10px;border-radius:999px;background:#142943;color:#c6d1df;font-size:13px}
+.item{background:var(--card2);border:1px solid var(--line);border-radius:18px;padding:16px;margin:12px 0}.actions{display:flex;gap:8px;flex-wrap:wrap}.small{font-size:13px}.status{font-weight:800}
+@media(max-width:520px){.wrap{padding:22px 20px 90px}.top h1{font-size:27px}.card{padding:20px}.grid{grid-template-columns:1fr 1fr}}
+</style></head>
+<body><div class="wrap">
+<div class="top"><div><h1>台股策略工具</h1><div class="muted">V2.5・資金 / 正2 / 個股</div></div><div class="muted" id="clock"></div></div>
+<div class="tabs"><div class="tab active" data-p="fund">資金總覽</div><div class="tab" data-p="lev">正2策略</div><div class="tab" data-p="stock">個股</div></div>
 
 <section id="fund" class="page active">
-<div class="card"><h2>資金配置</h2>
-<label>目前可動用總資金（含目前持倉市值）</label><input id="totalCapital" type="number" inputmode="decimal" placeholder="例如 2500000">
-<div class="grid3" style="margin-top:12px">
-<div class="kpi"><div class="t">正2目標 30%</div><div id="levTarget" class="v">—</div></div>
-<div class="kpi"><div class="t">單一新個股 20%</div><div id="stockOne" class="v">—</div></div>
-<div class="kpi"><div class="t">個股合計上限 40%</div><div id="stockMax" class="v">—</div></div>
-</div></div>
-
-<div class="card"><h2>正2目前持倉</h2><div class="grid2">
-<div><label>損益平衡價</label><input id="levCost" type="number" step="0.01" inputmode="decimal" placeholder="34.83"></div>
-<div><label>持有張數</label><input id="levLots" type="number" step="0.001" inputmode="decimal" placeholder="13"></div>
-</div><div class="grid3" style="margin-top:12px">
-<div class="kpi"><div class="t">持有成本</div><div id="levCostValue" class="v">—</div></div>
-<div class="kpi"><div class="t">目前市值</div><div id="levMarketValue" class="v">—</div></div>
-<div class="kpi"><div class="t">未實現損益</div><div id="levPnL" class="v">—</div></div>
-</div><div id="levAllocationStatus" class="status" style="margin-top:12px">請先輸入總資金</div></div>
-
-<div class="card"><div class="stockhead"><h2 style="margin:0">個股目前持倉</h2><button class="btn2" id="addStock">＋新增個股</button></div>
-<div id="stockHoldings"></div><div class="grid3" style="margin-top:12px">
-<div class="kpi"><div class="t">個股總成本</div><div id="stocksCost" class="v">—</div></div>
-<div class="kpi"><div class="t">個股總市值</div><div id="stocksValue" class="v">—</div></div>
-<div class="kpi"><div class="t">個股總損益</div><div id="stocksPnL" class="v">—</div></div>
-</div><div id="stockCapacityStatus" class="status" style="margin-top:12px">請先輸入總資金</div></div>
-
-<div class="card"><h2>整體資金狀態</h2><div class="grid3">
-<div class="kpi"><div class="t">正2目前占比</div><div id="levPct" class="v">—</div></div>
-<div class="kpi"><div class="t">個股目前占比</div><div id="stocksPct" class="v">—</div></div>
-<div class="kpi"><div class="t">推估現金</div><div id="cashLeft" class="v">—</div></div>
-</div></div></section>
+ <div class="card"><h2>資金配置</h2><label class="muted">目前可動用總資金（含目前持有市值）</label><input id="capital" type="number" inputmode="decimal" placeholder="例如 2500000">
+ <div class="grid"><div class="metric"><span class="muted">正2目標 30%</span><b id="levTarget">—</b></div><div class="metric"><span class="muted">單一新個股 20%</span><b id="oneStock">—</b></div><div class="metric wide"><span class="muted">個股合計上限 40%</span><b id="stockMax">—</b></div></div></div>
+ <div class="card"><h2>正2目前投資狀況</h2><div class="grid"><div class="metric"><span class="muted">總成本</span><b id="fLevCost">—</b></div><div class="metric"><span class="muted">目前市值</span><b id="fLevValue">—</b></div><div class="metric"><span class="muted">未實現損益</span><b id="fLevPnL">—</b></div><div class="metric"><span class="muted">資金占比</span><b id="fLevPct">—</b></div></div></div>
+ <div class="card"><h2>個股目前投資狀況</h2><div class="grid"><div class="metric"><span class="muted">總成本</span><b id="fStockCost">—</b></div><div class="metric"><span class="muted">目前市值</span><b id="fStockValue">—</b></div><div class="metric"><span class="muted">未實現損益</span><b id="fStockPnL">—</b></div><div class="metric"><span class="muted">資金占比</span><b id="fStockPct">—</b></div><div class="metric wide"><span class="muted">剩餘現金估計</span><b id="cashLeft">—</b></div></div></div>
+</section>
 
 <section id="lev" class="page">
-<div class="card"><div class="stockhead"><div><h2 style="margin:0">市場行情</h2><div id="marketTime" class="sub">讀取 market.json…</div></div><button id="refreshMarket" class="btn">更新行情</button></div>
-<div class="grid2" style="margin-top:12px"><div class="kpi"><div class="t">加權指數</div><div id="taiex" class="big">—</div></div><div class="kpi"><div class="t">00631L</div><div id="levPrice" class="big">—</div></div></div></div>
-<div class="card"><h2>本輪高點</h2><label>加權指數本輪高點</label><input id="cyclePeak" type="number" step="0.01" inputmode="decimal" placeholder="例如 55234"><div class="note">加碼觸發只依「加權指數」判斷，不再用正2價格線性估算。</div></div>
-<div class="card"><h2>加碼階梯</h2><table><thead><tr><th>回檔</th><th>觸發指數</th><th>本次加碼</th><th>累計正2</th></tr></thead><tbody id="ladder"></tbody></table><div id="drawdownStatus" class="status" style="margin-top:12px">等待行情與本輪高點</div></div>
-<div class="card"><h2>+30% 再平衡</h2><div class="row"><span>以損益平衡價為基準</span><strong id="rebalancePrice">—</strong></div><div class="sub">整體正2部位達 +30% 時，將正2調回總資金 30%，其餘回到現金。</div></div>
+ <div class="card"><h2>市場行情</h2><div class="grid"><div class="metric"><span class="muted">加權指數</span><b id="taiex">—</b></div><div class="metric"><span class="muted">00631L</span><b id="levPrice">—</b></div></div><p class="muted small" id="marketTime">等待 market.json</p><button onclick="loadMarket()">更新行情</button></div>
+ <div class="card"><h2>正2實際買入</h2><div class="grid"><div><label class="muted">買入價</label><input id="levBuyPrice" type="number" step=".01"></div><div><label class="muted">張數</label><input id="levLots" type="number" step=".001"></div></div><button onclick="addLev()">＋新增買入</button><div id="levLotsList"></div></div>
+ <div class="card"><h2>目前投資狀況</h2><div class="grid"><div class="metric"><span class="muted">加權平均成本</span><b id="levAvg">—</b></div><div class="metric"><span class="muted">總張數</span><b id="levTotalLots">—</b></div><div class="metric"><span class="muted">總成本</span><b id="levCost">—</b></div><div class="metric"><span class="muted">目前市值</span><b id="levValue">—</b></div><div class="metric"><span class="muted">損益</span><b id="levPnL">—</b></div><div class="metric"><span class="muted">報酬率</span><b id="levReturn">—</b></div><div class="metric wide"><span class="muted">整體部位 +30% 價格</span><b id="rebalancePrice">—</b></div></div></div>
+ <div class="card"><h2>加碼階梯</h2><label class="muted">本輪大盤最高點</label><input id="peak" type="number" step=".01"><div id="ladder"></div></div>
 </section>
 
-<section id="stocks" class="page">
-<div class="card"><h2>個股資金規則</h2><div class="row"><span>單一新部位</span><strong>20%</strong></div><div class="row"><span>所有個股合計上限</span><strong>40%</strong></div><div class="sub">已有股票獲利了結一半後，依目前個股市值占總資金比例重新判斷是否有足夠 20% 額度開新部位。</div></div>
-<div class="card"><h2>買入條件檢查</h2><div class="sub">V2.4 先固定你的判斷規則；自動掃描資料介面下一步接入。</div>
-<div style="margin-top:10px"><div class="row"><span>股價在年線之上</span><span class="pill">必要</span></div><div class="row"><span>年線走平或上彎</span><span class="pill">必要</span></div><div class="row"><span>5 / 10 / 20 日均線收斂</span><span class="pill">≤ 5%</span></div><div class="row"><span>成交量</span><span class="pill">&gt; 1,000 張</span></div><div class="row"><span>KD 向上</span><span class="pill">必要</span></div><div class="row"><span>月營收創高 / 強勢</span><span class="pill">必要</span></div></div></div>
-<div class="card"><h2>目前個股部位</h2><div id="stockSummaryMirror"></div></div>
+<section id="stock" class="page">
+ <div class="card"><h2>觀察標的</h2><p class="muted">輸入股票代號。系統會讀取 stocks.json 的最新掃描結果判斷條件。</p><div class="grid"><input id="watchCode" placeholder="例如 2330"><button onclick="addWatch()">＋加入觀察</button></div><div id="watchList"></div></div>
+ <div class="card"><h2>買入條件</h2>
+  <div class="row"><span>股價在年線之上</span><span class="pill">必要</span></div><div class="row"><span>年線走平或上彎</span><span class="pill">必要</span></div><div class="row"><span>5 / 10 / 20 日均線收斂</span><span class="pill">≤ 5%</span></div><div class="row"><span>成交量</span><span class="pill">&gt; 1,000 張</span></div><div class="row"><span>KD 向上</span><span class="pill">必要</span></div><div class="row"><span>月營收創高 / 強勢</span><span class="pill">必要</span></div>
+ </div>
+ <div class="card"><h2>已實際買入個股</h2><div class="grid"><input id="holdCode" placeholder="股票代號"><input id="holdPrice" type="number" step=".01" placeholder="買入價"><input id="holdLots" type="number" step=".001" placeholder="張數"><button onclick="addHolding()">＋新增持股</button></div><div id="holdingList"></div></div>
 </section>
 </div>
-
 <script>
-const $=id=>document.getElementById(id);
-const fmt=n=>Number.isFinite(n)?new Intl.NumberFormat('zh-TW',{maximumFractionDigits:0}).format(Math.round(n)):'—';
-const fmt2=n=>Number.isFinite(n)?new Intl.NumberFormat('zh-TW',{minimumFractionDigits:2,maximumFractionDigits:2}).format(n):'—';
-const num=id=>parseFloat($(id).value)||0, KEY='twStrategyV24';
-let state={totalCapital:0,levCost:0,levLots:0,cyclePeak:0,stocks:[]}, market={taiex:0,lev:0,time:''};
-function load(){try{state={...state,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch(e){};$('totalCapital').value=state.totalCapital||'';$('levCost').value=state.levCost||'';$('levLots').value=state.levLots||'';$('cyclePeak').value=state.cyclePeak||'';if(!Array.isArray(state.stocks))state.stocks=[];renderStocks();calc()}
-function save(){localStorage.setItem(KEY,JSON.stringify(state))}
-function syncState(){state.totalCapital=num('totalCapital');state.levCost=num('levCost');state.levLots=num('levLots');state.cyclePeak=num('cyclePeak');save();calc()}
-['totalCapital','levCost','levLots','cyclePeak'].forEach(id=>$(id).addEventListener('input',syncState));
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));b.classList.add('active');$(b.dataset.page).classList.add('active')}));
-function renderStocks(){const box=$('stockHoldings');box.innerHTML='';if(!state.stocks.length)box.innerHTML='<div class="sub" style="padding:14px 0">尚未新增個股持倉。</div>';state.stocks.forEach((s,i)=>{const d=document.createElement('div');d.className='stockitem';d.innerHTML=`<div class="stockhead"><strong>${s.code||'未填代號'} ${s.name||''}</strong><button class="xbtn" data-del="${i}">刪除</button></div><div class="stockgrid"><div><label>股票代號</label><input data-i="${i}" data-k="code" value="${s.code||''}" inputmode="numeric"></div><div><label>名稱</label><input data-i="${i}" data-k="name" value="${s.name||''}"></div><div><label>成本價</label><input data-i="${i}" data-k="cost" type="number" step="0.01" value="${s.cost||''}"></div><div><label>持有股數</label><input data-i="${i}" data-k="shares" type="number" step="1" value="${s.shares||''}"></div><div style="grid-column:1/-1"><label>目前股價</label><input data-i="${i}" data-k="price" type="number" step="0.01" value="${s.price||''}"></div></div>`;box.appendChild(d)});box.querySelectorAll('input[data-i]').forEach(inp=>inp.addEventListener('input',e=>{const i=+e.target.dataset.i,k=e.target.dataset.k;state.stocks[i][k]=['cost','shares','price'].includes(k)?(parseFloat(e.target.value)||0):e.target.value;save();calc()}));box.querySelectorAll('[data-del]').forEach(b=>b.addEventListener('click',()=>{state.stocks.splice(+b.dataset.del,1);save();renderStocks();calc()}))}
-$('addStock').addEventListener('click',()=>{state.stocks.push({code:'',name:'',cost:0,shares:0,price:0});save();renderStocks();calc()});
-function calc(){const T=state.totalCapital,lp=market.lev,lots=state.levLots,cost=state.levCost,levCostVal=cost*lots*1000,levValue=lp*lots*1000,levPnl=levValue-levCostVal,stocksCost=state.stocks.reduce((a,s)=>a+(+s.cost||0)*(+s.shares||0),0),stocksValue=state.stocks.reduce((a,s)=>a+(+s.price||0)*(+s.shares||0),0),stocksPnl=stocksValue-stocksCost;
-$('levTarget').textContent=T?'$'+fmt(T*.30):'—';$('stockOne').textContent=T?'$'+fmt(T*.20):'—';$('stockMax').textContent=T?'$'+fmt(T*.40):'—';$('levCostValue').textContent=cost&&lots?'$'+fmt(levCostVal):'—';$('levMarketValue').textContent=lp&&lots?'$'+fmt(levValue):'—';$('levPnL').textContent=lp&&lots?(levPnl>=0?'+':'')+'$'+fmt(levPnl):'—';$('levPnL').className='v '+(levPnl>=0?'good':'bad');$('stocksCost').textContent=state.stocks.length?'$'+fmt(stocksCost):'—';$('stocksValue').textContent=state.stocks.length?'$'+fmt(stocksValue):'—';$('stocksPnL').textContent=state.stocks.length?(stocksPnl>=0?'+':'')+'$'+fmt(stocksPnl):'—';$('stocksPnL').className='v '+(stocksPnl>=0?'good':'bad');
-if(T){const levPct=levValue/T*100,stockPct=stocksValue/T*100,cash=T-levValue-stocksValue;$('levPct').textContent=fmt2(levPct)+'%';$('stocksPct').textContent=fmt2(stockPct)+'%';$('cashLeft').textContent='$'+fmt(cash);const levGap=T*.30-levValue;$('levAllocationStatus').innerHTML=levGap>0?`正2距離 30% 目標還差 <span class="good">$${fmt(levGap)}</span>`:`正2目前已達／超過 30% 目標 <span class="warn">$${fmt(Math.abs(levGap))}</span>`;const cap=T*.40-stocksValue,one=T*.20;$('stockCapacityStatus').innerHTML=cap>=one?`🟢 可新增 1 檔，單檔建議投入 <span class="good">$${fmt(one)}</span>；個股剩餘額度 $${fmt(cap)}`:`🟡 個股剩餘額度 <span class="warn">$${fmt(Math.max(0,cap))}</span>，不足完整 20% 新部位`}else{$('levPct').textContent=$('stocksPct').textContent=$('cashLeft').textContent='—';$('levAllocationStatus').textContent=$('stockCapacityStatus').textContent='請先輸入總資金'}
-$('rebalancePrice').textContent=cost?'$'+fmt2(cost*1.30):'—';renderLadder();renderStockMirror()}
-function renderLadder(){const peak=state.cyclePeak,T=state.totalCapital,rows=[[-15,.10,.40],[-30,.15,.55],[-45,.20,.75],[-60,.15,.90]];$('ladder').innerHTML=rows.map(r=>`<tr><td>${r[0]}%</td><td>${peak?fmt(peak*(1+r[0]/100)):'—'}</td><td>${T?'$'+fmt(T*r[1]):'—'}</td><td>${Math.round(r[2]*100)}%</td></tr>`).join('');if(peak&&market.taiex){const dd=(market.taiex/peak-1)*100;let msg=`目前自高點回檔 ${fmt2(dd)}%。`;if(dd<=-60)msg+=' 🔴 已達 -60%';else if(dd<=-45)msg+=' 🔴 已達 -45%';else if(dd<=-30)msg+=' 🟠 已達 -30%';else if(dd<=-15)msg+=' 🟡 已達 -15%';else msg+=' 尚未到 -15% 第一階。';$('drawdownStatus').textContent=msg}else $('drawdownStatus').textContent='等待行情與本輪高點'}
-function renderStockMirror(){const box=$('stockSummaryMirror');if(!state.stocks.length){box.innerHTML='<div class="sub">尚未建立個股持倉。</div>';return}box.innerHTML=state.stocks.map(s=>{const v=(+s.price||0)*(+s.shares||0),c=(+s.cost||0)*(+s.shares||0),p=v-c;return `<div class="row"><span><strong>${s.code||'—'} ${s.name||''}</strong><br><span class="sub">${fmt(s.shares||0)} 股</span></span><span style="text-align:right">$${fmt(v)}<br><span class="${p>=0?'good':'bad'}">${p>=0?'+':''}$${fmt(p)}</span></span></div>`}).join('')}
-function walk(o,cb){if(!o||typeof o!=='object')return;for(const [k,v] of Object.entries(o)){cb(k,v);if(v&&typeof v==='object')walk(v,cb)}}
-function tryPrice(o){return parseFloat(o?.price??o?.last??o?.z??o?.close??0)||0}
-function parseMarket(j){let ta=0,lv=0,time=j.updated_at||j.time||'';for(const k of ['taiex','TAIEX','t00','index'])if(j[k])ta=tryPrice(j[k])||ta;for(const k of ['00631L','lev','etf','yuanta2x'])if(j[k])lv=tryPrice(j[k])||lv;walk(j,(k,v)=>{const ks=String(k).toLowerCase();if(!ta&&(ks.includes('taiex')||ks==='t00'||ks.includes('加權')))ta=tryPrice(v)||parseFloat(v)||0;if(!lv&&(ks.includes('00631l')||ks.includes('正2')))lv=tryPrice(v)||parseFloat(v)||0;if(!time&&['updated_at','market_time','time'].includes(ks)&&typeof v==='string')time=v});return{taiex:ta,lev:lv,time}}
-async function loadMarket(){$('marketTime').textContent='更新中…';try{const r=await fetch('market.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error();const j=await r.json();market=parseMarket(j);$('taiex').textContent=market.taiex?fmt2(market.taiex):'—';$('levPrice').textContent=market.lev?'$'+fmt2(market.lev):'—';$('marketTime').textContent=market.time?('資料更新：'+market.time):'已讀取 market.json'}catch(e){$('marketTime').textContent='行情讀取失敗，請稍後重試'}calc()}
-$('refreshMarket').addEventListener('click',loadMarket);setInterval(()=>{$('clock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'})},1000);load();loadMarket();
-</script>
-</body></html>
+const $=id=>document.getElementById(id), money=n=>Number.isFinite(n)?'NT$ '+Math.round(n).toLocaleString('zh-TW'):'—', num=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—';
+let state=JSON.parse(localStorage.getItem('tw25')||'{"capital":0,"levBuys":[],"watch":[],"holdings":[],"peak":0}');
+let market={taiex:{price:NaN},etf00631L:{price:NaN}}, stocks={};
+function save(){localStorage.setItem('tw25',JSON.stringify(state))}
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('active'));t.classList.add('active');$(t.dataset.p).classList.add('active')});
+$('capital').value=state.capital||'';$('peak').value=state.peak||'';
+$('capital').oninput=e=>{state.capital=+e.target.value;save();render()};$('peak').oninput=e=>{state.peak=+e.target.value;save();render()};
+async function loadMarket(){try{market=await fetch('market.json?t='+Date.now()).then(r=>r.json());$('taiex').textContent=num(+market.taiex?.price);$('levPrice').textContent='$'+num(+market.etf00631L?.price);$('marketTime').textContent='資料更新：'+(market.updated_at||market.taiex?.market_time||'—');render()}catch(e){$('marketTime').textContent='market.json 讀取失敗'}}
+async function loadStocks(){try{stocks=await fetch('stocks.json?t='+Date.now()).then(r=>r.json())}catch(e){stocks={}}render()}
+function addLev(){let p=+$('levBuyPrice').value,l=+$('levLots').value;if(p>0&&l>0){state.levBuys.push({p,l});save();$('levBuyPrice').value='';$('levLots').value='';render()}}
+function delLev(i){state.levBuys.splice(i,1);save();render()}
+function addWatch(){let c=$('watchCode').value.trim();if(c&&!state.watch.includes(c)){state.watch.push(c);save();$('watchCode').value='';render()}}
+function delWatch(i){state.watch.splice(i,1);save();render()}
+function addHolding(){let c=$('holdCode').value.trim(),p=+$('holdPrice').value,l=+$('holdLots').value;if(c&&p>0&&l>0){state.holdings.push({c,p,l});save();$('holdCode').value='';$('holdPrice').value='';$('holdLots').value='';render()}}
+function delHolding(i){state.holdings.splice(i,1);save();render()}
+function stockPx(c){return +(stocks[c]?.price||NaN)}
+function render(){
+ const cap=+state.capital||0, lp=+market.etf00631L?.price;
+ $('levTarget').textContent=money(cap*.3);$('oneStock').textContent=money(cap*.2);$('stockMax').textContent=money(cap*.4);
+ let lots=state.levBuys.reduce((a,x)=>a+x.l,0), cost=state.levBuys.reduce((a,x)=>a+x.p*x.l*1000,0), avg=lots?cost/(lots*1000):NaN, val=Number.isFinite(lp)?lp*lots*1000:NaN,pnl=val-cost;
+ $('levLotsList').innerHTML=state.levBuys.map((x,i)=>`<div class="item"><b>$${num(x.p)} × ${num(x.l)} 張</b><div class="muted small">${money(x.p*x.l*1000)}</div><button class="danger" onclick="delLev(${i})">刪除</button></div>`).join('')||'<p class="muted">尚未新增買入紀錄。</p>';
+ $('levAvg').textContent=Number.isFinite(avg)?'$'+num(avg):'—';$('levTotalLots').textContent=lots?num(lots)+' 張':'—';$('levCost').textContent=cost?money(cost):'—';$('levValue').textContent=money(val);$('levPnL').textContent=money(pnl);$('levReturn').textContent=cost&&Number.isFinite(val)?((pnl/cost*100).toFixed(2)+'%'):'—';$('rebalancePrice').textContent=Number.isFinite(avg)?'$'+num(avg*1.3):'—';
+ $('fLevCost').textContent=cost?money(cost):'—';$('fLevValue').textContent=money(val);$('fLevPnL').textContent=money(pnl);$('fLevPct').textContent=cap&&Number.isFinite(val)?(val/cap*100).toFixed(1)+'%':'—';
+ let sc=0,sv=0, known=true;state.holdings.forEach(h=>{sc+=h.p*h.l*1000;let px=stockPx(h.c);if(Number.isFinite(px))sv+=px*h.l*1000;else known=false});
+ $('fStockCost').textContent=sc?money(sc):'—';$('fStockValue').textContent=sc?(known?money(sv):'等待個股行情'):'—';$('fStockPnL').textContent=sc&&known?money(sv-sc):'—';$('fStockPct').textContent=cap&&sc&&known?(sv/cap*100).toFixed(1)+'%':'—';$('cashLeft').textContent=cap?money(cap-(Number.isFinite(val)?val:0)-(known?sv:0)):'—';
+ let peak=+state.peak||0;$('ladder').innerHTML=[[-15,.10],[-30,.15],[-45,.20],[-60,.15]].map(x=>`<div class="row"><b>${x[0]}%</b><span>指數 ${peak?num(peak*(1+x[0]/100)):'—'}</span><span>${money(cap*x[1])}</span></div>`).join('');
+ $('watchList').innerHTML=state.watch.map((c,i)=>{let s=stocks[c];if(!s)return `<div class="item"><b>${c}</b><div class="muted">尚無掃描資料</div><button class="danger" onclick="delWatch(${i})">刪除</button></div>`;let checks=[s.above_ma240,s.ma240_up,s.ma_converged,s.volume_gt_1000,s.kd_up,s.revenue_strong],ok=checks.filter(Boolean).length;return `<div class="item"><b>${c} ${s.name||''}</b><div class="${ok===6?'good':'bad'} status">${ok===6?'符合買入條件':`符合 ${ok}/6 項`}</div><div class="muted small">現價 $${num(+s.price)}・資料 ${s.updated_at||'—'}</div><button class="danger" onclick="delWatch(${i})">刪除</button></div>`}).join('')||'<p class="muted">尚未加入觀察標的。</p>';
+ $('holdingList').innerHTML=state.holdings.map((h,i)=>{let px=stockPx(h.c),c=h.p*h.l*1000,v=px*h.l*1000;return `<div class="item"><b>${h.c}・$${num(h.p)} × ${num(h.l)} 張</b><div class="muted">成本 ${money(c)}・現價 ${Number.isFinite(px)?'$'+num(px):'等待行情'}・損益 ${Number.isFinite(v)?money(v-c):'—'}</div><button class="danger" onclick="delHolding(${i})">刪除</button></div>`}).join('')||'<p class="muted">尚未新增個股持股。</p>';
+}
+setInterval(()=>$('clock').textContent=new Date().toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit'}),1000);loadMarket();loadStocks();render();
+</script></body></html>
