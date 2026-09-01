@@ -25,15 +25,15 @@ jobs:
       - name: Build stock scanner data
         run: python update_stocks.py
 
-      - name: Commit scanner data
+      - name: Commit scanner and statistics data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add stocks.json stocks_meta.json history/
+          git add stocks.json stocks_meta.json history/ signals_history.json stats_summary.json
           if git diff --cached --quiet; then
             echo "No change"
           else
-            git commit -m "Update stock scanner data and daily history"
+            git commit -m "Update stock scanner, history and statistics"
             git pull --rebase origin main
             git push origin main
           fi
