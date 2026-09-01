@@ -1,30 +1,73 @@
 {
-  "generated_at": "2026-09-01 21:32:02",
-  "universe": 2391,
-  "success": 0,
-  "failed": 2391,
-  "source_universe": "TWSE OpenAPI + TPEx OpenAPI",
-  "source_history": "Yahoo Finance chart endpoint (unofficial)",
-  "failed_sample": {
-    "00401A": "HTTP Error 429: Too Many Requests",
-    "00403A": "HTTP Error 429: Too Many Requests",
-    "00407A": "HTTP Error 429: Too Many Requests",
-    "00405A": "HTTP Error 429: Too Many Requests",
-    "00404A": "HTTP Error 429: Too Many Requests",
-    "00400A": "HTTP Error 429: Too Many Requests",
-    "00406A": "HTTP Error 429: Too Many Requests",
-    "00402A": "HTTP Error 429: Too Many Requests",
-    "00408A": "HTTP Error 429: Too Many Requests",
-    "0050": "HTTP Error 429: Too Many Requests",
-    "0052": "HTTP Error 429: Too Many Requests",
-    "0051": "HTTP Error 429: Too Many Requests",
-    "0056": "HTTP Error 429: Too Many Requests",
-    "0055": "HTTP Error 429: Too Many Requests",
-    "00410A": "HTTP Error 429: Too Many Requests",
-    "0053": "HTTP Error 429: Too Many Requests",
-    "0061": "HTTP Error 429: Too Many Requests",
-    "0057": "HTTP Error 429: Too Many Requests",
-    "006204": "HTTP Error 429: Too Many Requests",
-    "006203": "HTTP Error 429: Too Many Requests"
-  }
+  "generated_at": "2026-09-01 14:25:30",
+  "universe": 1981,
+  "ok": 1968,
+  "errors": 13,
+  "sample_errors": [
+    {
+      "code": "6921",
+      "market": "TW",
+      "error": "insufficient history: 166"
+    },
+    {
+      "code": "7689",
+      "market": "TW",
+      "error": "insufficient history: 220"
+    },
+    {
+      "code": "7711",
+      "market": "TW",
+      "error": "insufficient history: 190"
+    },
+    {
+      "code": "7791",
+      "market": "TW",
+      "error": "insufficient history: 207"
+    },
+    {
+      "code": "7803",
+      "market": "TW",
+      "error": "insufficient history: 74"
+    },
+    {
+      "code": "7799",
+      "market": "TW",
+      "error": "insufficient history: 234"
+    },
+    {
+      "code": "7823",
+      "market": "TW",
+      "error": "insufficient history: 137"
+    },
+    {
+      "code": "7835",
+      "market": "TW",
+      "error": "insufficient history: 28"
+    },
+    {
+      "code": "7855",
+      "market": "TW",
+      "error": "insufficient history: 221"
+    },
+    {
+      "code": "4974",
+      "market": "TWO",
+      "error": "HTTP Error 400: Bad Request"
+    },
+    {
+      "code": "6907",
+      "market": "TWO",
+      "error": "insufficient history: 141"
+    },
+    {
+      "code": "7717",
+      "market": "TWO",
+      "error": "insufficient history: 193"
+    },
+    {
+      "code": "7794",
+      "market": "TWO",
+      "error": "insufficient history: 33"
+    }
+  ]
 }
