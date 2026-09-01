@@ -31,9 +31,13 @@
 .ltable tr.active{background:#153653}
 
 .statsScroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:12px}.statsTable{width:100%;min-width:620px;border-collapse:collapse;font-size:13px}.statsTable th,.statsTable td{padding:12px 9px;border-bottom:1px solid var(--l);text-align:right;white-space:nowrap}.statsTable th:first-child,.statsTable td:first-child{text-align:left;min-width:180px}.statsTable tbody tr:first-child{background:#153653}.statsTable .pos{color:var(--g);font-weight:900}.statsTable .neg{color:var(--r);font-weight:900}.statsTable .countCell{font-weight:900}
-</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V3.9・完整策略版</div>
+</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V4.0・完整策略版</div>
 <div class=tabs><div class="tab on" data-p=f>資金總覽</div><div class=tab data-p=l>正2策略</div><div class=tab data-p=s>個股</div><div class=tab data-p=a>統計分析</div></div>
-<section id=f class="page on"><div class=card><h2>資金總覽</h2><div class=hint>持股資訊由正2與個股頁自動彙總。</div><label class=m>目前可動用總資金（含持股市值）</label><input id=capital type=number placeholder="2500000"><div class=grid><div class=metric>正2目標 30%<b id=t30>—</b></div><div class=metric>單一個股 20%<b id=t20>—</b></div><div class=metric>個股上限 40%<b id=t40>—</b></div><div class=metric>個股目前市值<b id=fsv>—</b></div></div></div></section>
+<section id=f class="page on">
+<div class=card><h2>資金總覽</h2><div class=hint>持股資訊由正2與個股頁自動彙總。</div><label class=m>目前可動用總資金（含持股市值）</label><input id=capital type=number placeholder="2500000"><div class=grid><div class=metric>正2目標 30%<b id=t30>—</b></div><div class=metric>單一個股 20%<b id=t20>—</b></div><div class=metric>個股上限 40%<b id=t40>—</b></div><div class=metric>預估可用現金<b id=fCash>—</b></div></div></div>
+<div class=card><h2>目前正2投資狀況</h2><div class=grid><div class=metric>投入成本<b id=fLevCost>—</b></div><div class=metric>目前市值<b id=fLevValue>—</b></div><div class=metric>未實現損益<b id=fLevPnl>—</b></div><div class=metric>資金占比<b id=fLevAlloc>—</b></div></div></div>
+<div class=card><h2>目前個股投資狀況</h2><div class=grid><div class=metric>剩餘成本<b id=fStockCost>—</b></div><div class=metric>目前市值<b id=fStockValue>—</b></div><div class=metric>未實現損益<b id=fStockPnl>—</b></div><div class=metric>資金占比<b id=fStockAlloc>—</b></div></div></div>
+</section>
 <section id=l class=page>
 
 <div class=card>
@@ -123,7 +127,7 @@
 <script>
 const $=x=>document.getElementById(x),N=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—',M=n=>Number.isFinite(n)?'NT$ '+Math.round(n).toLocaleString('zh-TW'):'—';
 const STATE_KEY='tw26real';
-let st={capital:2500000,buys:[],sales:[]},db={},meta={},statsData={};
+let st={capital:2500000,buys:[],sales:[]},db={},meta={},statsData={},strategyConfig={compact_ma_pct:.05,min_avg_volume_lots:10000,volume_multiplier:2,support_max_gap_pct:.05,tracking_days:10};
 try{const raw=localStorage.getItem(STATE_KEY);if(raw)st={...st,...JSON.parse(raw)}}catch(e){}
 if(!Array.isArray(st.buys))st.buys=[];if(!Array.isArray(st.sales))st.sales=[];
 function save(){try{localStorage.setItem(STATE_KEY,JSON.stringify(st))}catch(e){console.warn('localStorage save failed',e)}} 
@@ -150,19 +154,19 @@ async function refreshLeveragedMarket(){
    if(Number.isFinite(idx)&&idx>0)l.index=idx;else if(m?.market_filter&&Number.isFinite(+m.market_filter.price))l.index=+m.market_filter.price;
    if(Number.isFinite(etf)&&etf>0)l.price=etf;
    l.updated=mk?.updated_at||mk?.etf00631L?.market_time||mk?.taiex?.market_time||m?.generated_at||'';
-   save();renderLeveraged();
+   save();renderLeveraged();render();
  }catch(e){console.warn('market refresh failed',e);renderLeveraged()}
 }
 function addLeveragedBuy(){
  const l=levState(),p=+$('lBuyPrice').value||0,q=+$('lBuyLots').value||0;
  if(p<=0||q<=0){alert('請輸入買入價與張數');return}
  l.buys.push({price:p,lots:q,date:new Date().toISOString().slice(0,10)});
- l.draft_price='';l.draft_lots='';save();renderLeveraged();
+ l.draft_price='';l.draft_lots='';save();renderLeveraged();render();
 }
 function delLeveragedBuy(i){
  levState().buys.splice(i,1);
  save();
- renderLeveraged();
+ renderLeveraged();render();
 }
 function renderLeveraged(){
  const l=levState();
@@ -262,7 +266,7 @@ function renderStats(){
  const rows=Array.isArray(statsData?.groups)?[...statsData.groups]:[];
  rows.sort((a,b)=>(+b.avg_max_up_pct||-999)-(+a.avg_max_up_pct||-999));
  const p=v=>Number.isFinite(+v)?`${+v>=0?'+':''}${(+v).toFixed(2)}%`:'—';
- if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・以站穩支撐收盤為基準・最多追蹤 10 個交易日`;
+ if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・以站穩支撐收盤為基準・最多追蹤 ${statsData.window_trading_days||10} 個交易日・條件版 ${statsData?.config?.version||'—'}`;
  if(!$('statsBody'))return;
  if(!rows.length){$('statsBody').innerHTML='<tr><td colspan="5">目前尚無站穩支撐樣本</td></tr>';return}
  $('statsBody').innerHTML=rows.map((x,i)=>`<tr><td><b>${i+1}. ${x.name||x.group||'—'}</b></td><td class="${(+x.avg_max_up_pct||0)>=0?'pos':'neg'}">${p(x.avg_max_up_pct)}</td><td class="${(+x.avg_max_down_pct||0)<0?'neg':'pos'}">${p(x.avg_max_down_pct)}</td><td class="${(+x.avg_cumulative_pct||0)>=0?'pos':'neg'}">${p(x.avg_cumulative_pct)}</td><td class=countCell>${x.samples||0}</td></tr>`).join('');
@@ -274,22 +278,22 @@ const lp=$('lPeak'),lbp=$('lBuyPrice'),lbl=$('lBuyLots');
 if(lp)lp.addEventListener('input',e=>{levState().peak=+e.target.value||0;save();renderLeveraged()});
 if(lbp)lbp.addEventListener('input',e=>{levState().draft_price=e.target.value;save()});
 if(lbl)lbl.addEventListener('input',e=>{levState().draft_lots=e.target.value;save()});
-async function load(){$('scanStatus').textContent='載入全市場資料中…';$('scanMeta').textContent='—';try{const [d,m]=await Promise.all([fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('stocks.json HTTP '+r.status);return r.json()}),fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]);db=d||{};meta=m||{};$('scanStatus').textContent='全市場資料已載入';const cnt=Object.keys(db).length;$('scanMeta').textContent=`有效 ${cnt.toLocaleString('zh-TW')} 檔${meta.generated_at?'・更新 '+meta.generated_at:''}`}catch(e){db={};meta={};$('scanStatus').textContent='資料載入失敗';$('scanMeta').textContent=String(e.message||e)}render()}
+async function load(){$('scanStatus').textContent='載入全市場資料中…';$('scanMeta').textContent='—';try{const [d,m,cfg]=await Promise.all([fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('stocks.json HTTP '+r.status);return r.json()}),fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),fetch('strategy_config.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]);db=d||{};meta=m||{};strategyConfig={...strategyConfig,...(meta.strategy_config||{}),...(cfg||{})};$('scanStatus').textContent='全市場資料已載入';const cnt=Object.keys(db).length;$('scanMeta').textContent=`有效 ${cnt.toLocaleString('zh-TW')} 檔${meta.generated_at?'・更新 '+meta.generated_at:''}・放量門檻 ${N(+strategyConfig.volume_multiplier)}倍`}catch(e){db={};meta={};$('scanStatus').textContent='資料載入失敗';$('scanMeta').textContent=String(e.message||e)}render()}
 function I(c){return db[c]||{}} function P(c){return +I(c).price} function rem(c){return st.buys.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)-st.sales.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)}
 function avg(c){let a=st.buys.filter(x=>x.c==c),l=a.reduce((s,x)=>s+x.l,0);return l?a.reduce((s,x)=>s+x.p*x.l,0)/l:NaN}
-function buy(){let c=$('bc').value.trim(),p=+$('bp').value,l=+$('bl').value;if(c&&p>0&&l>0){st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save();$('bc').value=$('bp').value=$('bl').value='';render()}}function wb(c){let p=+prompt(c+' 實際買入價？'),l=+prompt('買入張數？');if(p>0&&l>0){st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save();render()}}
+function buy(){let c=$('bc').value.trim().toUpperCase(),p=+$('bp').value,l=+$('bl').value;if(!c||p<=0||l<=0){alert('請輸入股票代號、買入價與張數');return}if(Object.keys(db).length&& !db[c]){alert('目前掃描資料找不到 '+c+'，請確認股票代號');return}st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save();$('bc').value=$('bp').value=$('bl').value='';render();alert('已新增 '+c+' 持股，狀況已顯示在下方。')}function wb(c){let p=+prompt(c+' 實際買入價？'),l=+prompt('買入張數？');if(p>0&&l>0){st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save();render()}}
 function sell(c){let p=+prompt(c+' 實際賣出價？'),l=+prompt('賣出張數？目前剩 '+N(rem(c))+' 張');if(p>0&&l>0&&l<=rem(c)){st.sales.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save();render()}}
 function status(c){let i=I(c),p=P(c),a=avg(c),r=(p/a-1)*100,m5=+i.ma5,m10=+i.ma10;if(Number.isFinite(m10)&&p<m10)return['全部出清','red','跌破10日線'];if(Number.isFinite(m5)&&p<m5)return['出清一半','orange','跌破5日線'];if(Number.isFinite(r)&&r>=20)return['出清一半','orange','獲利達 +20%'];if(Number.isFinite(r)&&r>=15)return['接近半出','yellow','獲利達 +15%'];return['持有','green','未達出場條件']}
 function dif(p,m){if(!Number.isFinite(p)||!Number.isFinite(m))return'—';let d=p-m;return`${d>=0?'+':''}${N(d)} / ${d>=0?'+':''}${(d/m*100).toFixed(2)}%`}
 function conds(i){
  let p=+i.price,m5=+i.ma5,m10=+i.ma10,m20=+i.ma20,ma240=+i.ma240,v=+i.volume_lots,v20=+i.volume20_avg_lots;
- let vals=[p,m5,m10,m20], valid=vals.every(Number.isFinite);
- let converge=valid&&((Math.max(...vals)-Math.min(...vals))/Math.min(...vals)<=.05);
+ let vals=[p,m5,m10,m20], valid=vals.every(Number.isFinite),compact=+strategyConfig.compact_ma_pct||.05,minVol=+strategyConfig.min_avg_volume_lots||10000,volMult=+strategyConfig.volume_multiplier||2;
+ let converge=valid&&Math.min(...vals)>0&&((Math.max(...vals)-Math.min(...vals))/Math.min(...vals)<=compact);
  let annual=Number.isFinite(p)&&Number.isFinite(ma240)&&p>ma240;
  let bullish=[m5,m10,m20].every(Number.isFinite)&&m5>m10&&m10>m20;
- let avgvol=Number.isFinite(v20)&&v20>10000;
+ let avgvol=Number.isFinite(v20)&&v20>minVol;
  let breakout=valid&&p>m5&&p>m10&&p>m20;
- let surge=Number.isFinite(v)&&Number.isFinite(v20)&&v>v20*2;
+ let surge=Number.isFinite(v)&&Number.isFinite(v20)&&v>v20*volMult;
  return [converge,annual,bullish,avgvol,breakout,surge]
 }
 function score(i){return conds(i).filter(Boolean).length}
@@ -300,9 +304,9 @@ function openDetail(c){
  ['均線：現價、MA5、MA10、MA20 差異 ≤5%',cs[0]],
  ['年線：股價在年線之上',cs[1]],
  ['多頭：MA5 > MA10 > MA20',cs[2]],
- ['成交量：20日平均量 > 10,000張',cs[3]],
+ ['成交量：20日平均量 > '+N(+strategyConfig.min_avg_volume_lots)+'張',cs[3]],
  ['突破：現價高於 MA5/10/20',cs[4]],
- ['放量：今日量 > 20日均量 2倍',cs[5]]
+ ['放量：今日量 > 20日均量 '+N(+strategyConfig.volume_multiplier)+'倍',cs[5]]
  ];
  $('detailTitle').textContent=c+' '+(i.name||'');
  $('detailBody').innerHTML=`<div class=stats>
@@ -334,8 +338,8 @@ function renderMarketFilter(){
 
 const GROUPS=[
 {id:'A',name:'① 6/6 全部符合',desc:'六項條件全部通過',test:c=>c.every(Boolean)},
-{id:'B',name:'② 5/6・僅放量未過',desc:'只有「放量」未達 2 倍',test:c=>c.slice(0,5).every(Boolean)&&!c[5]},
-{id:'C',name:'③ 5/6・僅成交量未過',desc:'只有「20日均量 > 10,000張」未過',test:c=>c[0]&&c[1]&&c[2]&&!c[3]&&c[4]&&c[5]},
+{id:'B',name:'② 5/6・僅放量未過',desc:'只有「放量」未達目前倍數門檻',test:c=>c.slice(0,5).every(Boolean)&&!c[5]},
+{id:'C',name:'③ 5/6・僅成交量未過',desc:'只有「20日均量」門檻未過',test:c=>c[0]&&c[1]&&c[2]&&!c[3]&&c[4]&&c[5]},
 {id:'D',name:'④ 5/6・僅多頭未過',desc:'只有 MA5 > MA10 > MA20 未過',test:c=>c[0]&&c[1]&&!c[2]&&c[3]&&c[4]&&c[5]},
 {id:'E',name:'⑤ 5/6・僅年線未過',desc:'只有股價未站上 MA240',test:c=>c[0]&&!c[1]&&c[2]&&c[3]&&c[4]&&c[5]},
 {id:'F',name:'⑥ 5/6・僅均線糾結未過',desc:'只有現價/MA5/10/20 未落在 5% 內',test:c=>!c[0]&&c[1]&&c[2]&&c[3]&&c[4]&&c[5]}
@@ -343,9 +347,15 @@ const GROUPS=[
 function scannerGroups(){const groups=Object.fromEntries(GROUPS.map(g=>[g.id,[]]));Object.entries(db).forEach(([c,i])=>{const cs=conds(i),g=GROUPS.find(x=>x.test(cs));if(g)groups[g.id].push([c,i,cs])});GROUPS.forEach(g=>groups[g.id].sort((a,b)=>(+b[1].volume20_avg_lots||0)-(+a[1].volume20_avg_lots||0)));return groups}
 function renderScanner(){const heads=['均線','年線','多頭','成交量','突破','放量'],groups=scannerGroups(),total=GROUPS.reduce((s,g)=>s+groups[g.id].length,0);let html=`<div class=small>本日列入比較組：${total} 檔</div>`;GROUPS.forEach(g=>{const arr=groups[g.id];html+=`<div class=group><div class=gtitle><div><div class=gname>${g.name}</div><div class=gdesc>${g.desc}</div></div><span class=count>${arr.length}</span></div>`;if(!arr.length){html+=`<div class=empty>本組今日無標的</div></div>`;return}html+=`<div class=watchhead><span>股票</span>${heads.map(x=>`<span>${x}</span>`).join('')}<span></span></div>`;html+=arr.map(([c,i,vals])=>`<div class=watchrow><div class=watchname onclick="openDetail('${c}')">${c} ${i.name||''}<span class=market>${i.market||''}</span></div>${vals.map(v=>`<span class="light ${v?'on':'off'}"></span>`).join('')}<button class=iconbtn onclick="openDetail('${c}')">›</button></div>`).join('');html+=`</div>`});$('watchs').innerHTML=html}
 
-function render(){renderMarketFilter();let cap=st.capital||0;$('t30').textContent=M(cap*.3);$('t20').textContent=M(cap*.2);$('t40').textContent=M(cap*.4);
-let codes=[...new Set(st.buys.map(x=>x.c))].filter(c=>rem(c)>0),sv=0;codes.forEach(c=>{let p=P(c);if(Number.isFinite(p))sv+=p*rem(c)*1000});$('fsv').textContent=codes.length?M(sv):'—';
-$('holds').innerHTML=codes.map(c=>{let i=I(c),p=P(c),a=avg(c),r=rem(c),ret=Number.isFinite(p)?(p/a-1)*100:NaN,z=status(c),sales=st.sales.filter(x=>x.c==c);return`<div class=item><div class=head><div><div class=nm>${c} ${i.name||''}</div><div class=m>剩 ${N(r)}張・成本 $${N(a)}・收盤 ${Number.isFinite(p)?'$'+N(p):'等待資料'}</div></div><span class="badge ${z[1]}">${z[0]}</span></div><div class=stats><div class=mini>未實現報酬<b>${Number.isFinite(ret)?ret.toFixed(2)+'%':'—'}</b></div><div class=mini>出場判斷<b>${z[2]}</b></div><div class=mini>MA5<b>${N(+i.ma5)}</b></div><div class=mini>MA10<b>${N(+i.ma10)}</b></div></div><div class=actions><button onclick="sell('${c}')">＋實際賣出</button></div>${sales.map(x=>`<div class=sale>${x.d}　賣出 $${N(x.p)} × ${N(x.l)}張</div>`).join('')}</div>`}).join('')||'<p class=m>尚未新增實際持股。</p>';
+function render(){renderMarketFilter();let cap=+st.capital||0;$('t30').textContent=M(cap*.3);$('t20').textContent=M(cap*.2);$('t40').textContent=M(cap*.4);
+let codes=[...new Set(st.buys.map(x=>x.c))].filter(c=>rem(c)>0),stockValue=0,stockCost=0;
+codes.forEach(c=>{let p=P(c),a=avg(c),r=rem(c);if(Number.isFinite(p))stockValue+=p*r*1000;if(Number.isFinite(a))stockCost+=a*r*1000});
+let lv=levState(),levLots=0,levCost=0;lv.buys.forEach(x=>{levLots+=+x.lots||0;levCost+=(+x.price||0)*(+x.lots||0)*1000});let levValue=(levLots>0&&+lv.price>0)?levLots*1000*(+lv.price):0;
+let stockPnl=stockValue-stockCost,levPnl=levValue-levCost,investedValue=stockValue+levValue,cash=cap-investedValue;
+const set=(id,v)=>{if($(id))$(id).textContent=v};
+set('fLevCost',levCost?M(levCost):'—');set('fLevValue',levValue?M(levValue):'—');set('fLevPnl',(levCost||levValue)?`${levPnl>=0?'+':''}${M(levPnl)}`:'—');set('fLevAlloc',cap>0?(levValue/cap*100).toFixed(1)+'%':'—');
+set('fStockCost',stockCost?M(stockCost):'—');set('fStockValue',stockValue?M(stockValue):'—');set('fStockPnl',(stockCost||stockValue)?`${stockPnl>=0?'+':''}${M(stockPnl)}`:'—');set('fStockAlloc',cap>0?(stockValue/cap*100).toFixed(1)+'%':'—');set('fCash',cap>0?M(cash):'—');
+$('holds').innerHTML=codes.map(c=>{let i=I(c),p=P(c),a=avg(c),r=rem(c),ret=Number.isFinite(p)&&Number.isFinite(a)&&a>0?(p/a-1)*100:NaN,z=status(c),sales=st.sales.filter(x=>x.c==c),cost=Number.isFinite(a)?a*r*1000:NaN,mv=Number.isFinite(p)?p*r*1000:NaN,pnl=Number.isFinite(cost)&&Number.isFinite(mv)?mv-cost:NaN,alloc=cap>0&&Number.isFinite(mv)?mv/cap*100:NaN;return`<div class=item><div class=head><div><div class=nm>${c} ${i.name||''}</div><div class=m>剩 ${N(r)}張・成本 $${N(a)}・最新 ${Number.isFinite(p)?'$'+N(p):'等待掃描資料'}</div></div><span class="badge ${z[1]}">${z[0]}</span></div><div class=stats><div class=mini>目前市值<b>${Number.isFinite(mv)?M(mv):'—'}</b></div><div class=mini>未實現損益<b>${Number.isFinite(pnl)?`${pnl>=0?'+':''}${M(pnl)}`:'—'}</b></div><div class=mini>未實現報酬<b>${Number.isFinite(ret)?`${ret>=0?'+':''}${ret.toFixed(2)}%`:'—'}</b></div><div class=mini>資金占比<b>${Number.isFinite(alloc)?alloc.toFixed(1)+'%':'—'}</b></div><div class=mini>出場判斷<b>${z[2]}</b></div><div class=mini>MA5<b>${N(+i.ma5)}</b></div><div class=mini>MA10<b>${N(+i.ma10)}</b></div><div class=mini>資料日<b>${i.date||meta.generated_at||'—'}</b></div></div><div class=actions><button onclick="sell('${c}')">＋實際賣出</button></div>${sales.map(x=>`<div class=sale>${x.d}　賣出 $${N(x.p)} × ${N(x.l)}張</div>`).join('')}</div>`}).join('')||'<p class=m>尚未新增實際持股。</p>';
 renderScanner()}
 load();render();renderLeveraged();loadStats();setTimeout(refreshLeveragedMarket,100);
 </script></body></html>

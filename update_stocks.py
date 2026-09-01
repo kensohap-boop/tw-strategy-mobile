@@ -8,10 +8,23 @@ from statistics import mean
 
 TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
+HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"}
+DEFAULT_CONFIG = {
+    "version": "2026-09-02.1",
+    "compact_ma_pct": 0.05,
+    "min_avg_volume_lots": 10000,
+    "volume_multiplier": 2.0,
+    "support_max_gap_pct": 0.05,
+    "tracking_days": 10,
+}
 
-HEADERS = {
-    "User-Agent": "Mozilla/5.0",
-    "Accept": "application/json,text/plain,*/*",
+GROUP_NAMES = {
+    "A": "① 6/6 全部符合",
+    "B": "② 5/6・僅放量未過",
+    "C": "③ 5/6・僅成交量未過",
+    "D": "④ 5/6・僅多頭未過",
+    "E": "⑤ 5/6・僅年線未過",
+    "F": "⑥ 5/6・僅均線糾結未過",
 }
 
 def fetch_json(url, timeout=20, retries=3):
@@ -26,41 +39,50 @@ def fetch_json(url, timeout=20, retries=3):
             time.sleep(1.5 * (i + 1))
     raise last
 
-def get_universe():
-    out = []
-    seen = set()
+def load_json(path, default):
+    try:
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+    except Exception:
+        return default
 
-    twse = fetch_json(TWSE_URL)
-    for r in twse:
+def load_config():
+    cfg = dict(DEFAULT_CONFIG)
+    raw = load_json("strategy_config.json", {})
+    if isinstance(raw, dict):
+        cfg.update(raw)
+    cfg["compact_ma_pct"] = float(cfg.get("compact_ma_pct", 0.05))
+    cfg["min_avg_volume_lots"] = float(cfg.get("min_avg_volume_lots", 10000))
+    cfg["volume_multiplier"] = float(cfg.get("volume_multiplier", 2.0))
+    cfg["support_max_gap_pct"] = float(cfg.get("support_max_gap_pct", 0.05))
+    cfg["tracking_days"] = int(cfg.get("tracking_days", 10))
+    return cfg
+
+def get_universe():
+    out, seen = [], set()
+    for r in fetch_json(TWSE_URL):
         code = str(r.get("Code", "")).strip()
         name = str(r.get("Name", "")).strip()
         if code.isdigit() and len(code) == 4 and code not in seen:
             seen.add(code)
             out.append((code, name, "TW"))
-
-    tpex = fetch_json(TPEX_URL)
-    for r in tpex:
+    for r in fetch_json(TPEX_URL):
         code = str(r.get("SecuritiesCompanyCode", "")).strip()
         name = str(r.get("CompanyName", "")).strip()
         if code.isdigit() and len(code) == 4 and code not in seen:
             seen.add(code)
             out.append((code, name, "TWO"))
-
     return out
 
 def fetch_yahoo_chart(code, market):
     suffix = ".TW" if market == "TW" else ".TWO"
-    symbol = code + suffix
     url = (
-        "https://query1.finance.yahoo.com/v8/finance/chart/"
-        + symbol
+        "https://query1.finance.yahoo.com/v8/finance/chart/" + code + suffix
         + "?range=2y&interval=1d&includePrePost=false&events=div%2Csplits"
     )
     data = fetch_json(url, timeout=20, retries=2)
     result = (((data or {}).get("chart") or {}).get("result") or [])
     if not result:
         raise RuntimeError("Yahoo result empty")
-
     r = result[0]
     ts = r.get("timestamp") or []
     quote = (((r.get("indicators") or {}).get("quote") or [{}])[0])
@@ -68,268 +90,82 @@ def fetch_yahoo_chart(code, market):
     high = quote.get("high") or []
     low = quote.get("low") or []
     volume = quote.get("volume") or []
-
     rows = []
     n = min(len(ts), len(close), len(volume))
+    tz8 = timezone(timedelta(hours=8))
     for i in range(n):
-        c = close[i]
-        v = volume[i]
+        c, v = close[i], volume[i]
         if c is None or v is None:
             continue
         rows.append({
+            "date": datetime.fromtimestamp(ts[i], tz=timezone.utc).astimezone(tz8).strftime("%Y-%m-%d"),
             "close": float(c),
             "high": float(high[i]) if i < len(high) and high[i] is not None else float(c),
             "low": float(low[i]) if i < len(low) and low[i] is not None else float(c),
             "volume_lots": float(v) / 1000.0,
-            "date": datetime.fromtimestamp(ts[i], tz=timezone.utc).astimezone(timezone(timedelta(hours=8))).strftime("%Y-%m-%d") if i < len(ts) else "",
         })
-
     if len(rows) < 240:
         raise RuntimeError(f"insufficient history: {len(rows)}")
     return rows
 
-def calc(code, name, market):
+def evaluate_conditions(rec, cfg):
+    try:
+        p = float(rec.get("price"))
+        m5, m10, m20, m240 = map(float, [rec.get("ma5"), rec.get("ma10"), rec.get("ma20"), rec.get("ma240")])
+        v = float(rec.get("volume_lots"))
+        v20 = float(rec.get("volume20_avg_lots"))
+    except Exception:
+        return [False] * 6
+    vals = [p, m5, m10, m20]
+    compact = min(vals) > 0 and ((max(vals) - min(vals)) / min(vals)) <= cfg["compact_ma_pct"]
+    above240 = p > m240
+    bullish = m5 > m10 > m20
+    liquid = v20 > cfg["min_avg_volume_lots"]
+    breakout = p > m5 and p > m10 and p > m20
+    surge = v > cfg["volume_multiplier"] * v20
+    return [compact, above240, bullish, liquid, breakout, surge]
+
+def group_for(rec, cfg):
+    c = evaluate_conditions(rec, cfg)
+    if all(c): return "A"
+    if all(c[:5]) and not c[5]: return "B"
+    if c[0] and c[1] and c[2] and (not c[3]) and c[4] and c[5]: return "C"
+    if c[0] and c[1] and (not c[2]) and c[3] and c[4] and c[5]: return "D"
+    if c[0] and (not c[1]) and c[2] and c[3] and c[4] and c[5]: return "E"
+    if (not c[0]) and c[1] and c[2] and c[3] and c[4] and c[5]: return "F"
+    return None
+
+def calc(code, name, market, cfg):
     rows = fetch_yahoo_chart(code, market)
     closes = [r["close"] for r in rows]
     vols = [r["volume_lots"] for r in rows]
-
-    price = closes[-1]
-    ma5 = mean(closes[-5:])
-    ma10 = mean(closes[-10:])
-    ma20 = mean(closes[-20:])
-    ma240 = mean(closes[-240:])
-    v20 = mean(vols[-20:])
-    vt = vols[-1]
-
-    vals = [price, ma5, ma10, ma20]
-    compact = ((max(vals) - min(vals)) / min(vals)) <= 0.05
-    above240 = price > ma240
-    bull = ma5 > ma10 > ma20
-    liquid = v20 > 10000
-    breakout = price > ma5 and price > ma10 and price > ma20
-    volume2x = vt > 2 * v20
-
-    return code, {
+    rec = {
         "code": code,
         "name": name,
         "market": "TWSE" if market == "TW" else "TPEx",
-        "price": round(price, 4),
+        "date": rows[-1]["date"],
+        "price": round(closes[-1], 4),
         "high": round(rows[-1]["high"], 4),
         "low": round(rows[-1]["low"], 4),
-        "date": rows[-1].get("date", ""),
-        "prev_date": rows[-2].get("date", "") if len(rows) >= 2 else "",
-        "prev_close": round(rows[-2]["close"], 4) if len(rows) >= 2 else None,
-        "prev_high": round(rows[-2]["high"], 4) if len(rows) >= 2 else None,
-        "prev_low": round(rows[-2]["low"], 4) if len(rows) >= 2 else None,
-        "ma5": round(ma5, 4),
-        "ma10": round(ma10, 4),
-        "ma20": round(ma20, 4),
-        "ma240": round(ma240, 4),
-        "volume_lots": round(vt, 2),
-        "volume20_avg_lots": round(v20, 2),
-        "conditions": {
-            "compact_ma": compact,
-            "above_ma240": above240,
-            "bullish": bull,
-            "liquid_20d_gt_10000": liquid,
-            "breakout": breakout,
-            "volume_2x": volume2x,
-        },
+        "ma5": round(mean(closes[-5:]), 4),
+        "ma10": round(mean(closes[-10:]), 4),
+        "ma20": round(mean(closes[-20:]), 4),
+        "ma240": round(mean(closes[-240:]), 4),
+        "volume_lots": round(vols[-1], 2),
+        "volume20_avg_lots": round(mean(vols[-20:]), 2),
     }
-
-
-GROUP_DEFS = [
-    ("A", "① 6/6 全部符合", lambda c: all(c)),
-    ("B", "② 5/6・僅放量未過", lambda c: all(c[:5]) and not c[5]),
-    ("C", "③ 5/6・僅成交量未過", lambda c: c[0] and c[1] and c[2] and (not c[3]) and c[4] and c[5]),
-    ("D", "④ 5/6・僅多頭未過", lambda c: c[0] and c[1] and (not c[2]) and c[3] and c[4] and c[5]),
-    ("E", "⑤ 5/6・僅年線未過", lambda c: c[0] and (not c[1]) and c[2] and c[3] and c[4] and c[5]),
-    ("F", "⑥ 5/6・僅均線糾結未過", lambda c: (not c[0]) and c[1] and c[2] and c[3] and c[4] and c[5]),
-]
-
-def cond_list(rec):
-    c = rec.get("conditions") or {}
-    return [
-        bool(c.get("compact_ma")),
-        bool(c.get("above_ma240")),
-        bool(c.get("bullish")),
-        bool(c.get("liquid_20d_gt_10000")),
-        bool(c.get("breakout")),
-        bool(c.get("volume_2x")),
-    ]
-
-def group_for(rec):
-    cs = cond_list(rec)
-    for gid, name, test in GROUP_DEFS:
-        if test(cs):
-            return gid, name
-    return None, None
-
-def load_json_file(path, default):
-    try:
-        return json.loads(Path(path).read_text(encoding="utf-8"))
-    except Exception:
-        return default
-
-def update_signal_tracking(results, market_filter, today):
-    path = Path("signals_history.json")
-    data = load_json_file(path, {"signals": []})
-    signals = data.get("signals") if isinstance(data, dict) else []
-    if not isinstance(signals, list):
-        signals = []
-
-    # Bootstrap the latest previous daily snapshot if signals_history did not exist yet.
-    history_dir = Path("history")
-    if history_dir.exists():
-        prev_files = sorted([x for x in history_dir.glob("*.json") if x.stem < today])
-        if prev_files:
-            prev = load_json_file(prev_files[-1], {})
-            prev_date = prev.get("date") or prev_files[-1].stem
-            prev_stocks = prev.get("stocks") or {}
-            existing_prev = {(x.get("code"), x.get("d0_date")) for x in signals}
-            prev_filter = prev.get("market_filter") or {}
-            for code, rec in prev_stocks.items():
-                gid, gname = group_for(rec)
-                if not gid or (code, prev_date) in existing_prev:
-                    continue
-                cur = results.get(code) or {}
-                use_prev = cur.get("prev_date") == prev_date
-                d0_close = cur.get("prev_close") if use_prev else rec.get("price")
-                d0_high = cur.get("prev_high") if use_prev else rec.get("high", rec.get("price"))
-                d0_low = cur.get("prev_low") if use_prev else rec.get("low", rec.get("price"))
-                signals.append({
-                    "code": code, "name": rec.get("name", ""), "market": rec.get("market", ""),
-                    "group": gid, "group_name": gname, "d0_date": prev_date,
-                    "d0_close": d0_close, "d0_high": d0_high, "d0_low": d0_low,
-                    "conditions": rec.get("conditions", {}),
-                    "market_filter": prev_filter, "status": "waiting_d1",
-                })
-
-    # First update older signals with today's close/high/low.
-    for sig in signals:
-        code = sig.get("code")
-        rec = results.get(code)
-        if not rec or sig.get("d0_date") == today:
-            continue
-
-        status = sig.get("status")
-        if status == "waiting_d1":
-            close = float(rec.get("price", 0) or 0)
-            ma5 = float(rec.get("ma5", 0) or 0)
-            midpoint = (float(sig.get("d0_high", 0)) + float(sig.get("d0_low", 0))) / 2.0
-            d0_close = float(sig.get("d0_close", 0) or 0)
-            support = close > 0 and ma5 > 0 and d0_close > 0 and close >= ma5 and close >= midpoint and close <= d0_close * 1.05
-            sig["d1_checked_date"] = today
-            sig["d1_close"] = round(close, 4)
-            sig["d1_ma5"] = round(ma5, 4)
-            sig["d0_midpoint"] = round(midpoint, 4)
-            sig["support_confirmed"] = support
-            if support:
-                sig["status"] = "tracking"
-                sig["support_date"] = today
-                sig["support_close"] = round(close, 4)
-                sig["tracking"] = []
-            else:
-                sig["status"] = "rejected_d1"
-
-        elif status == "tracking":
-            tracking = sig.setdefault("tracking", [])
-            if len(tracking) >= 10 or any(x.get("date") == today for x in tracking):
-                if len(tracking) >= 10:
-                    sig["status"] = "complete"
-                continue
-            close = float(rec.get("price", 0) or 0)
-            high = float(rec.get("high", close) or close)
-            low = float(rec.get("low", close) or close)
-            if close > 0:
-                tracking.append({"date": today, "close": round(close,4), "high": round(high,4), "low": round(low,4)})
-                if len(tracking) >= 10:
-                    sig["status"] = "complete"
-
-    # Then add today's new D0 candidates.
-    existing = {(x.get("code"), x.get("d0_date")) for x in signals}
-    for code, rec in results.items():
-        gid, gname = group_for(rec)
-        if not gid or (code, today) in existing:
-            continue
-        signals.append({
-            "code": code,
-            "name": rec.get("name", ""),
-            "market": rec.get("market", ""),
-            "group": gid,
-            "group_name": gname,
-            "d0_date": today,
-            "d0_close": rec.get("price"),
-            "d0_high": rec.get("high", rec.get("price")),
-            "d0_low": rec.get("low", rec.get("price")),
-            "conditions": rec.get("conditions", {}),
-            "market_filter": market_filter,
-            "status": "waiting_d1",
-        })
-
-    data = {"updated_at": today, "signals": signals}
-    path.write_text(json.dumps(data, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    return signals
-
-def build_stats_summary(signals, generated_at):
-    names = {gid: name for gid, name, _ in GROUP_DEFS}
-    buckets = {gid: [] for gid, _, _ in GROUP_DEFS}
-    for sig in signals:
-        if not sig.get("support_confirmed"):
-            continue
-        base = float(sig.get("support_close", 0) or 0)
-        if base <= 0:
-            continue
-        tr = sig.get("tracking") or []
-        if not tr:
-            continue
-        highs = [float(x.get("high", x.get("close", base))) for x in tr]
-        lows = [float(x.get("low", x.get("close", base))) for x in tr]
-        closes = [float(x.get("close", base)) for x in tr]
-        item = {
-            "max_up_pct": (max(highs) / base - 1.0) * 100.0,
-            "max_down_pct": (min(lows) / base - 1.0) * 100.0,
-            "cumulative_pct": (closes[-1] / base - 1.0) * 100.0,
-            "days": len(tr),
-            "complete": len(tr) >= 10,
-        }
-        gid = sig.get("group")
-        if gid in buckets:
-            buckets[gid].append(item)
-
-    groups = []
-    for gid, name, _ in GROUP_DEFS:
-        arr = buckets[gid]
-        if arr:
-            avg = lambda k: sum(x[k] for x in arr) / len(arr)
-            groups.append({
-                "group": gid,
-                "name": name,
-                "avg_max_up_pct": round(avg("max_up_pct"), 4),
-                "avg_max_down_pct": round(avg("max_down_pct"), 4),
-                "avg_cumulative_pct": round(avg("cumulative_pct"), 4),
-                "samples": len(arr),
-                "complete_samples": sum(1 for x in arr if x["complete"]),
-            })
-        else:
-            groups.append({
-                "group": gid, "name": name,
-                "avg_max_up_pct": None, "avg_max_down_pct": None,
-                "avg_cumulative_pct": None, "samples": 0, "complete_samples": 0,
-            })
-    groups.sort(key=lambda x: (-9999 if x["avg_max_up_pct"] is None else x["avg_max_up_pct"]), reverse=True)
-    summary = {
-        "generated_at": generated_at,
-        "basis": "support_close",
-        "window_trading_days": 10,
-        "groups": groups,
+    cond = evaluate_conditions(rec, cfg)
+    rec["conditions"] = {
+        "compact_ma": cond[0],
+        "above_ma240": cond[1],
+        "bullish": cond[2],
+        "liquid_20d_gt_min": cond[3],
+        "breakout": cond[4],
+        "volume_multiplier": cond[5],
     }
-    Path("stats_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    return summary
-
+    return code, rec
 
 def calc_market_filter():
-    """Calculate TAIEX MA filter from Yahoo ^TWII daily history."""
     url = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?range=2y&interval=1d&events=div%2Csplits"
     data = fetch_json(url)
     result = data["chart"]["result"][0]
@@ -337,37 +173,167 @@ def calc_market_filter():
     if len(closes) < 240:
         raise RuntimeError(f"TAIEX insufficient history: {len(closes)}")
     price = closes[-1]
-    ma5 = mean(closes[-5:])
-    ma10 = mean(closes[-10:])
-    ma20 = mean(closes[-20:])
-    ma240 = mean(closes[-240:])
-    bullish = ma5 > ma10 > ma20
-    above240 = price > ma240
+    ma5, ma10, ma20, ma240 = mean(closes[-5:]), mean(closes[-10:]), mean(closes[-20:]), mean(closes[-240:])
+    bullish, above240 = ma5 > ma10 > ma20, price > ma240
     return {
-        "price": round(price, 4),
-        "ma5": round(ma5, 4),
-        "ma10": round(ma10, 4),
-        "ma20": round(ma20, 4),
-        "ma240": round(ma240, 4),
-        "bullish_ma": bullish,
-        "above_ma240": above240,
-        "filter_on": bullish and above240,
+        "price": round(price, 4), "ma5": round(ma5, 4), "ma10": round(ma10, 4),
+        "ma20": round(ma20, 4), "ma240": round(ma240, 4),
+        "bullish_ma": bullish, "above_ma240": above240, "filter_on": bullish and above240,
     }
 
+def read_history_snapshots():
+    out = []
+    h = Path("history")
+    if not h.exists():
+        return out
+    for p in sorted(h.glob("*.json")):
+        d = load_json(p, {})
+        if isinstance(d, dict) and isinstance(d.get("stocks"), dict):
+            out.append(d)
+    return out
+
+def rebuild_signals_and_stats(cfg, generated_at):
+    """Rebuild all signals from permanent daily snapshots using CURRENT config.
+    This makes historical statistics automatically adapt when strategy thresholds change.
+    """
+    snaps = read_history_snapshots()
+    signals = []
+    tracking_days = cfg["tracking_days"]
+    for i, d0 in enumerate(snaps):
+        stocks0 = d0.get("stocks") or {}
+        d0_date = d0.get("date") or ""
+        for code, rec0 in stocks0.items():
+            gid = group_for(rec0, cfg)
+            if not gid:
+                continue
+            sig = {
+                "code": code,
+                "name": rec0.get("name", ""),
+                "market": rec0.get("market", ""),
+                "group": gid,
+                "group_name": GROUP_NAMES[gid],
+                "d0_date": d0_date,
+                "d0_close": rec0.get("price"),
+                "d0_high": rec0.get("high", rec0.get("price")),
+                "d0_low": rec0.get("low", rec0.get("price")),
+                "market_filter": d0.get("market_filter") or {},
+                "config_version": cfg.get("version", ""),
+                "status": "waiting_d1",
+            }
+            if i + 1 >= len(snaps):
+                signals.append(sig)
+                continue
+            d1 = snaps[i + 1]
+            rec1 = (d1.get("stocks") or {}).get(code)
+            if not rec1:
+                sig["status"] = "missing_d1"
+                signals.append(sig)
+                continue
+            try:
+                close1 = float(rec1.get("price", 0) or 0)
+                ma5 = float(rec1.get("ma5", 0) or 0)
+                d0_close = float(rec0.get("price", 0) or 0)
+                d0_high = float(rec0.get("high", d0_close) or d0_close)
+                d0_low = float(rec0.get("low", d0_close) or d0_close)
+                midpoint = (d0_high + d0_low) / 2.0
+                support = close1 > 0 and ma5 > 0 and d0_close > 0 and close1 >= ma5 and close1 >= midpoint and close1 <= d0_close * (1 + cfg["support_max_gap_pct"])
+            except Exception:
+                support = False
+                close1 = ma5 = midpoint = 0
+            sig.update({
+                "d1_checked_date": d1.get("date", ""),
+                "d1_close": round(close1, 4), "d1_ma5": round(ma5, 4), "d0_midpoint": round(midpoint, 4),
+                "support_confirmed": support,
+            })
+            if not support:
+                sig["status"] = "rejected_d1"
+                signals.append(sig)
+                continue
+            sig["support_date"] = d1.get("date", "")
+            sig["support_close"] = round(close1, 4)
+            tracking = []
+            for dx in snaps[i + 2:i + 2 + tracking_days]:
+                rx = (dx.get("stocks") or {}).get(code)
+                if not rx:
+                    continue
+                try:
+                    c = float(rx.get("price", 0) or 0)
+                    if c <= 0: continue
+                    tracking.append({
+                        "date": dx.get("date", ""),
+                        "close": round(c, 4),
+                        "high": round(float(rx.get("high", c) or c), 4),
+                        "low": round(float(rx.get("low", c) or c), 4),
+                    })
+                except Exception:
+                    continue
+            sig["tracking"] = tracking
+            sig["status"] = "complete" if len(tracking) >= tracking_days else "tracking"
+            signals.append(sig)
+
+    Path("signals_history.json").write_text(json.dumps({
+        "generated_at": generated_at,
+        "config": cfg,
+        "signals": signals,
+    }, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+
+    buckets = {gid: [] for gid in GROUP_NAMES}
+    for sig in signals:
+        if not sig.get("support_confirmed"):
+            continue
+        base = float(sig.get("support_close", 0) or 0)
+        tr = sig.get("tracking") or []
+        if base <= 0 or not tr:
+            continue
+        highs = [float(x.get("high", x.get("close", base))) for x in tr]
+        lows = [float(x.get("low", x.get("close", base))) for x in tr]
+        closes = [float(x.get("close", base)) for x in tr]
+        buckets[sig["group"]].append({
+            "max_up_pct": (max(highs) / base - 1) * 100,
+            "max_down_pct": (min(lows) / base - 1) * 100,
+            "cumulative_pct": (closes[-1] / base - 1) * 100,
+            "days": len(tr),
+            "complete": len(tr) >= tracking_days,
+        })
+
+    groups = []
+    for gid, name in GROUP_NAMES.items():
+        arr = buckets[gid]
+        if arr:
+            av = lambda k: sum(x[k] for x in arr) / len(arr)
+            row = {
+                "group": gid, "name": name,
+                "avg_max_up_pct": round(av("max_up_pct"), 4),
+                "avg_max_down_pct": round(av("max_down_pct"), 4),
+                "avg_cumulative_pct": round(av("cumulative_pct"), 4),
+                "samples": len(arr),
+                "complete_samples": sum(1 for x in arr if x["complete"]),
+            }
+        else:
+            row = {"group": gid, "name": name, "avg_max_up_pct": None, "avg_max_down_pct": None, "avg_cumulative_pct": None, "samples": 0, "complete_samples": 0}
+        groups.append(row)
+    groups.sort(key=lambda x: -9999 if x["avg_max_up_pct"] is None else x["avg_max_up_pct"], reverse=True)
+    summary = {
+        "generated_at": generated_at,
+        "basis": "support_close",
+        "window_trading_days": tracking_days,
+        "config": cfg,
+        "groups": groups,
+    }
+    Path("stats_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+    return signals, summary
+
 def main():
+    cfg = load_config()
     universe = get_universe()
     print(f"Universe: {len(universe)}")
-
+    print("Strategy config:", json.dumps(cfg, ensure_ascii=False))
     market_filter = calc_market_filter()
     print("Market filter:", json.dumps(market_filter, ensure_ascii=False))
 
-    results = {}
-    errors = []
-    ok = 0
-
-    # Reduce concurrency to lower the chance of rate-limiting.
+    results, errors, ok = {}, [], 0
     with ThreadPoolExecutor(max_workers=3) as ex:
-        futs = {ex.submit(calc, *item): item for item in universe}
+        futs = {ex.submit(calc, *item, cfg): item for item in universe}
         for i, fut in enumerate(as_completed(futs), start=1):
             item = futs[fut]
             try:
@@ -376,62 +342,29 @@ def main():
                 ok += 1
             except Exception as e:
                 if len(errors) < 50:
-                    errors.append({
-                        "code": item[0],
-                        "market": item[2],
-                        "error": str(e),
-                    })
-
+                    errors.append({"code": item[0], "market": item[2], "error": str(e)})
             if i % 100 == 0:
                 print(f"Processed {i}/{len(universe)}; ok={ok} err={i-ok}")
 
+    generated_at = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
     meta = {
-        "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "universe": len(universe),
-        "ok": ok,
-        "errors": len(universe) - ok,
-        "sample_errors": errors,
-        "market_filter": market_filter,
+        "generated_at": generated_at,
+        "universe": len(universe), "ok": ok, "errors": len(universe) - ok,
+        "sample_errors": errors, "market_filter": market_filter, "strategy_config": cfg,
     }
-
-    Path("stocks_meta.json").write_text(
-        json.dumps(meta, ensure_ascii=False, indent=2),
-        encoding="utf-8",
-    )
-
-    # Do not allow a false-green workflow with empty data.
+    Path("stocks_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
     min_required = max(100, int(len(universe) * 0.20))
     if ok < min_required:
-        print(json.dumps(meta, ensure_ascii=False, indent=2))
-        raise SystemExit(
-            f"Too few successful stocks: {ok}/{len(universe)}. "
-            "stocks.json was NOT overwritten."
-        )
+        raise SystemExit(f"Too few successful stocks: {ok}/{len(universe)}. stocks.json was NOT overwritten.")
+    Path("stocks.json").write_text(json.dumps(results, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
-    Path("stocks.json").write_text(
-        json.dumps(results, ensure_ascii=False, separators=(",", ":")),
-        encoding="utf-8",
-    )
-
-    # Keep one permanent full-market snapshot per trading day.
-    history_dir = Path("history")
-    history_dir.mkdir(exist_ok=True)
     day = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
-    snapshot = {
-        "date": day,
-        "generated_at": meta["generated_at"],
-        "market_filter": market_filter,
-        "stocks": results,
-    }
-    (history_dir / f"{day}.json").write_text(
-        json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")),
-        encoding="utf-8",
-    )
+    h = Path("history"); h.mkdir(exist_ok=True)
+    snapshot = {"date": day, "generated_at": generated_at, "market_filter": market_filter, "strategy_config": cfg, "stocks": results}
+    (h / f"{day}.json").write_text(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
-    signals = update_signal_tracking(results, market_filter, day)
-    stats = build_stats_summary(signals, meta["generated_at"])
+    signals, stats = rebuild_signals_and_stats(cfg, generated_at)
     print("Signals:", len(signals), "Stats groups:", len(stats.get("groups", [])))
-
     print(json.dumps(meta, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
