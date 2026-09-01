@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-09-01 14:25:30",
+  "generated_at": "2026-09-01 14:46:39",
   "universe": 1981,
-  "ok": 1968,
-  "errors": 13,
+  "ok": 1969,
+  "errors": 12,
   "sample_errors": [
     {
       "code": "6921",
@@ -25,14 +25,14 @@
       "error": "insufficient history: 207"
     },
     {
-      "code": "7803",
-      "market": "TW",
-      "error": "insufficient history: 74"
-    },
-    {
       "code": "7799",
       "market": "TW",
       "error": "insufficient history: 234"
+    },
+    {
+      "code": "7803",
+      "market": "TW",
+      "error": "insufficient history: 74"
     },
     {
       "code": "7823",
@@ -48,11 +48,6 @@
       "code": "7855",
       "market": "TW",
       "error": "insufficient history: 221"
-    },
-    {
-      "code": "4974",
-      "market": "TWO",
-      "error": "HTTP Error 400: Bad Request"
     },
     {
       "code": "6907",
