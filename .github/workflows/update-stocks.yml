@@ -22,7 +22,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Build stock scanner data
+      - name: Scan market, save daily snapshot, rebuild statistics
         run: python update_stocks.py
 
       - name: Commit scanner and statistics data
@@ -33,7 +33,7 @@ jobs:
           if git diff --cached --quiet; then
             echo "No change"
           else
-            git commit -m "Update stock scanner, history and statistics"
+            git commit -m "Update scanner, daily history and statistics"
             git pull --rebase origin main
             git push origin main
           fi
