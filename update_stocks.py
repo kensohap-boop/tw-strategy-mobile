@@ -128,9 +128,39 @@ def calc(code, name, market):
         },
     }
 
+
+def calc_market_filter():
+    """Calculate TAIEX MA filter from Yahoo ^TWII daily history."""
+    url = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?range=2y&interval=1d&events=div%2Csplits"
+    data = get_json(url)
+    result = data["chart"]["result"][0]
+    closes = [x for x in result["indicators"]["quote"][0]["close"] if x is not None]
+    if len(closes) < 240:
+        raise RuntimeError(f"TAIEX insufficient history: {len(closes)}")
+    price = closes[-1]
+    ma5 = mean(closes[-5:])
+    ma10 = mean(closes[-10:])
+    ma20 = mean(closes[-20:])
+    ma240 = mean(closes[-240:])
+    bullish = ma5 > ma10 > ma20
+    above240 = price > ma240
+    return {
+        "price": round(price, 4),
+        "ma5": round(ma5, 4),
+        "ma10": round(ma10, 4),
+        "ma20": round(ma20, 4),
+        "ma240": round(ma240, 4),
+        "bullish_ma": bullish,
+        "above_ma240": above240,
+        "filter_on": bullish and above240,
+    }
+
 def main():
     universe = get_universe()
     print(f"Universe: {len(universe)}")
+
+    market_filter = calc_market_filter()
+    print("Market filter:", json.dumps(market_filter, ensure_ascii=False))
 
     results = {}
     errors = []
@@ -162,6 +192,7 @@ def main():
         "ok": ok,
         "errors": len(universe) - ok,
         "sample_errors": errors,
+        "market_filter": market_filter,
     }
 
     Path("stocks_meta.json").write_text(
@@ -180,6 +211,21 @@ def main():
 
     Path("stocks.json").write_text(
         json.dumps(results, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
+    # Keep one permanent full-market snapshot per trading day.
+    history_dir = Path("history")
+    history_dir.mkdir(exist_ok=True)
+    day = time.strftime("%Y-%m-%d")
+    snapshot = {
+        "date": day,
+        "generated_at": meta["generated_at"],
+        "market_filter": market_filter,
+        "stocks": results,
+    }
+    (history_dir / f"{day}.json").write_text(
+        json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")),
         encoding="utf-8",
     )
 
