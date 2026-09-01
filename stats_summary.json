@@ -1,0 +1,61 @@
+{
+  "generated_at": "2026-09-01 22:57:13",
+  "basis": "support_close",
+  "window_trading_days": 10,
+  "groups": [
+    {
+      "group": "A",
+      "name": "① 6/6 全部符合",
+      "avg_max_up_pct": null,
+      "avg_max_down_pct": null,
+      "avg_cumulative_pct": null,
+      "samples": 0,
+      "complete_samples": 0
+    },
+    {
+      "group": "B",
+      "name": "② 5/6・僅放量未過",
+      "avg_max_up_pct": null,
+      "avg_max_down_pct": null,
+      "avg_cumulative_pct": null,
+      "samples": 0,
+      "complete_samples": 0
+    },
+    {
+      "group": "C",
+      "name": "③ 5/6・僅成交量未過",
+      "avg_max_up_pct": null,
+      "avg_max_down_pct": null,
+      "avg_cumulative_pct": null,
+      "samples": 0,
+      "complete_samples": 0
+    },
+    {
+      "group": "D",
+      "name": "④ 5/6・僅多頭未過",
+      "avg_max_up_pct": null,
+      "avg_max_down_pct": null,
+      "avg_cumulative_pct": null,
+      "samples": 0,
+      "complete_samples": 0
+    },
+    {
+      "group": "E",
+      "name": "⑤ 5/6・僅年線未過",
+      "avg_max_up_pct": null,
+      "avg_max_down_pct": null,
+      "avg_cumulative_pct": null,
+      "samples": 0,
+      "complete_samples": 0
+    },
+    {
+      "group": "F",
+      "name": "⑥ 5/6・僅均線糾結未過",
+      "avg_max_up_pct": null,
+      "avg_max_down_pct": null,
+      "avg_cumulative_pct": null,
+      "samples": 0,
+      "complete_samples": 0
+    }
+  ]
+}
