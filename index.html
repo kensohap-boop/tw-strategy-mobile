@@ -1,5 +1,5 @@
 <!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>台股策略工具 V3.2</title><style>
+<title>台股策略工具 V3.3</title><style>
 :root{--bg:#071426;--c:#10233b;--c2:#09182a;--l:#294564;--t:#f5f7fb;--m:#9eabc0;--b:#438cf4;--g:#45d69a;--y:#ffd166;--o:#ff9f43;--r:#ff6b78}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--t);font-family:-apple-system,BlinkMacSystemFont,"PingFang TC",sans-serif}.w{max-width:800px;margin:auto;padding:25px 20px 100px}h1{margin:0;font-size:29px}.m{color:var(--m)}.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:25px 0}.tab{border:1px solid var(--l);border-radius:18px;padding:15px 3px;text-align:center;font-weight:800;color:var(--m)}.tab.on{background:#24466f;color:#fff;border-color:#4d9bff}.page{display:none}.page.on{display:block}.card{background:var(--c);border:1px solid var(--l);border-radius:23px;padding:20px;margin:0 0 18px}h2{margin:0 0 7px;font-size:24px}.hint{font-size:13px;color:var(--m);margin-bottom:15px}input{width:100%;background:var(--c2);border:1px solid var(--l);border-radius:14px;color:white;padding:14px;font-size:17px;margin:5px 0 9px}button{border:0;border-radius:13px;padding:12px 14px;background:var(--b);color:#fff;font-weight:800}.del{background:#542630}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.metric,.mini{background:var(--c2);border:1px solid var(--l);border-radius:15px;padding:13px}.metric b,.mini b{display:block;font-size:19px;margin-top:4px}.item{background:var(--c2);border:1px solid var(--l);border-radius:18px;padding:15px;margin-top:12px}.head{display:flex;justify-content:space-between;gap:10px}.nm{font-size:19px;font-weight:900}.badge{height:max-content;padding:6px 9px;border-radius:999px;font-size:12px;font-weight:900;white-space:nowrap}.green{background:#143d32;color:#67e5b3}.yellow{background:#4b411b;color:#ffe081}.orange{background:#4a311c;color:#ffbd78}.red{background:#4b2229;color:#ff9099}.gray{background:#182d43;color:#b9c9da}.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:11px}.small{font-size:12px;color:var(--m)}.checks{margin-top:10px}.ck{display:flex;justify-content:space-between;border-top:1px solid #213b57;padding:8px 0;font-size:13px}.yes{color:var(--g)}.no{color:var(--r)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}.sale{border-top:1px solid #213b57;margin-top:9px;padding-top:8px;font-size:13px}
 
@@ -20,7 +20,7 @@
 .scanbar b{font-size:14px}.group{margin-top:15px}.gtitle{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:0 0 7px}.gname{font-weight:900;font-size:16px}.gdesc{font-size:11px;color:var(--m);margin-top:2px}.count{background:#182d43;color:#c7d5e6;border-radius:999px;padding:5px 9px;font-size:12px;font-weight:900}
 .market{font-size:10px;color:var(--m);margin-left:5px}.empty{padding:13px;border:1px dashed var(--l);border-radius:14px;color:var(--m);font-size:13px}.refresh{background:#1e5f95;padding:8px 10px;font-size:12px}
 @media(max-width:520px){.watchrow,.watchhead{grid-template-columns:minmax(84px,1.5fr) repeat(6,20px) 30px;gap:5px;padding-left:7px;padding-right:7px}.light{width:13px;height:13px}.watchhead{font-size:9px}}
-</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V3.2・全市場真實資料版</div>
+</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V3.3・歷史統計版</div>
 <div class=tabs><div class="tab on" data-p=f>資金總覽</div><div class=tab data-p=l>正2策略</div><div class=tab data-p=s>個股</div></div>
 <section id=f class="page on"><div class=card><h2>資金總覽</h2><div class=hint>持股資訊由正2與個股頁自動彙總。</div><label class=m>目前可動用總資金（含持股市值）</label><input id=capital type=number placeholder="2500000"><div class=grid><div class=metric>正2目標 30%<b id=t30>—</b></div><div class=metric>單一個股 20%<b id=t20>—</b></div><div class=metric>個股上限 40%<b id=t40>—</b></div><div class=metric>個股目前市值<b id=fsv>—</b></div></div></div></section>
 <section id=l class=page><div class=card><h2>正2策略</h2><div class=hint>此測試版保留個股功能測試重點；正式合併時保留 V2.5 正2功能。</div></div></section>
@@ -82,6 +82,17 @@ function openDetail(c){
 function closeDetail(){$('detailModal').classList.remove('on')}
 
 
+
+function renderMarketFilter(){
+ const m=meta&&meta.market_filter;
+ const box=$('marketFilterBox');
+ if(!box)return;
+ if(!m){box.className='empty';box.innerHTML='目前 stocks_meta.json 尚未包含大盤均線。下一次執行新版掃描後會自動顯示。';return}
+ const on=!!m.filter_on;
+ box.className='status '+(on?'ok':'bad');
+ box.innerHTML=`<b>${on?'🟢 大盤濾網 ON・可以檢視個股進場訊號':'🔴 大盤濾網 OFF・暫停個股進場'}</b><div class=small style="margin-top:7px">MA5 ${fmt(m.ma5)} ${m.bullish_ma?'＞ MA10 '+fmt(m.ma10)+' ＞ MA20 '+fmt(m.ma20)+' ✅':'／MA10 '+fmt(m.ma10)+'／MA20 '+fmt(m.ma20)+' ❌'}<br>指數 ${fmt(m.price)} ${m.above_ma240?'＞':'≤'} MA240 ${fmt(m.ma240)} ${m.above_ma240?'✅':'❌'}</div>${on?'':'<div class=small style="margin-top:6px">個股仍照常掃描、保存與統計，但不視為正式進場訊號。</div>'}`;
+}
+
 const GROUPS=[
 {id:'A',name:'① 6/6 全部符合',desc:'六項條件全部通過',test:c=>c.every(Boolean)},
 {id:'B',name:'② 5/6・僅放量未過',desc:'只有「放量」未達 2 倍',test:c=>c.slice(0,5).every(Boolean)&&!c[5]},
@@ -93,7 +104,7 @@ const GROUPS=[
 function scannerGroups(){const groups=Object.fromEntries(GROUPS.map(g=>[g.id,[]]));Object.entries(db).forEach(([c,i])=>{const cs=conds(i),g=GROUPS.find(x=>x.test(cs));if(g)groups[g.id].push([c,i,cs])});GROUPS.forEach(g=>groups[g.id].sort((a,b)=>(+b[1].volume20_avg_lots||0)-(+a[1].volume20_avg_lots||0)));return groups}
 function renderScanner(){const heads=['均線','年線','多頭','成交量','突破','放量'],groups=scannerGroups(),total=GROUPS.reduce((s,g)=>s+groups[g.id].length,0);let html=`<div class=small>本日列入比較組：${total} 檔</div>`;GROUPS.forEach(g=>{const arr=groups[g.id];html+=`<div class=group><div class=gtitle><div><div class=gname>${g.name}</div><div class=gdesc>${g.desc}</div></div><span class=count>${arr.length}</span></div>`;if(!arr.length){html+=`<div class=empty>本組今日無標的</div></div>`;return}html+=`<div class=watchhead><span>股票</span>${heads.map(x=>`<span>${x}</span>`).join('')}<span></span></div>`;html+=arr.map(([c,i,vals])=>`<div class=watchrow><div class=watchname onclick="openDetail('${c}')">${c} ${i.name||''}<span class=market>${i.market||''}</span></div>${vals.map(v=>`<span class="light ${v?'on':'off'}"></span>`).join('')}<button class=iconbtn onclick="openDetail('${c}')">›</button></div>`).join('');html+=`</div>`});$('watchs').innerHTML=html}
 
-function render(){let cap=st.capital||0;$('t30').textContent=M(cap*.3);$('t20').textContent=M(cap*.2);$('t40').textContent=M(cap*.4);
+function render(){renderMarketFilter();let cap=st.capital||0;$('t30').textContent=M(cap*.3);$('t20').textContent=M(cap*.2);$('t40').textContent=M(cap*.4);
 let codes=[...new Set(st.buys.map(x=>x.c))].filter(c=>rem(c)>0),sv=0;codes.forEach(c=>{let p=P(c);if(Number.isFinite(p))sv+=p*rem(c)*1000});$('fsv').textContent=codes.length?M(sv):'—';
 $('holds').innerHTML=codes.map(c=>{let i=I(c),p=P(c),a=avg(c),r=rem(c),ret=Number.isFinite(p)?(p/a-1)*100:NaN,z=status(c),sales=st.sales.filter(x=>x.c==c);return`<div class=item><div class=head><div><div class=nm>${c} ${i.name||''}</div><div class=m>剩 ${N(r)}張・成本 $${N(a)}・收盤 ${Number.isFinite(p)?'$'+N(p):'等待資料'}</div></div><span class="badge ${z[1]}">${z[0]}</span></div><div class=stats><div class=mini>未實現報酬<b>${Number.isFinite(ret)?ret.toFixed(2)+'%':'—'}</b></div><div class=mini>出場判斷<b>${z[2]}</b></div><div class=mini>MA5<b>${N(+i.ma5)}</b></div><div class=mini>MA10<b>${N(+i.ma10)}</b></div></div><div class=actions><button onclick="sell('${c}')">＋實際賣出</button></div>${sales.map(x=>`<div class=sale>${x.d}　賣出 $${N(x.p)} × ${N(x.l)}張</div>`).join('')}</div>`}).join('')||'<p class=m>尚未新增實際持股。</p>';
 renderScanner()}
