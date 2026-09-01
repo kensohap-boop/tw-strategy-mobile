@@ -1,12 +1,12 @@
 {
-  "updated_at": "尚未執行 GitHub Action",
+  "updated_at": "2026-09-01 16:30:22",
   "source": "TWSE MIS",
   "taiex": {
-    "price": null,
-    "market_time": "—"
+    "price": 46948.72,
+    "market_time": "2026-09-01 13:33:00"
   },
   "etf00631L": {
-    "price": null,
-    "market_time": "—"
+    "price": 37.26,
+    "market_time": "2026-09-01 13:30:00"
   }
 }
