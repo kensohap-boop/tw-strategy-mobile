@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-01 14:46:39",
+  "generated_at": "2026-09-01 15:28:07",
   "universe": 1981,
   "ok": 1969,
   "errors": 12,
@@ -64,5 +64,15 @@
       "market": "TWO",
       "error": "insufficient history: 33"
     }
-  ]
+  ],
+  "market_filter": {
+    "price": 46948.7188,
+    "ma5": 46010.8977,
+    "ma10": 45500.2867,
+    "ma20": 45242.7525,
+    "ma240": 35137.5403,
+    "bullish_ma": true,
+    "above_ma240": true,
+    "filter_on": true
+  }
 }
