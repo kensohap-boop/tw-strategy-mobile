@@ -24,10 +24,50 @@
 .status{padding:15px;border-radius:16px;border:1px solid var(--l);line-height:1.55}
 .status.ok{background:#12382f;border-color:#266b58}
 .status.bad{background:#46242b;border-color:#7a3946}
-</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V3.3・歷史統計版</div>
+</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V3.4・完整策略版</div>
 <div class=tabs><div class="tab on" data-p=f>資金總覽</div><div class=tab data-p=l>正2策略</div><div class=tab data-p=s>個股</div><div class=tab data-p=a>統計分析</div></div>
 <section id=f class="page on"><div class=card><h2>資金總覽</h2><div class=hint>持股資訊由正2與個股頁自動彙總。</div><label class=m>目前可動用總資金（含持股市值）</label><input id=capital type=number placeholder="2500000"><div class=grid><div class=metric>正2目標 30%<b id=t30>—</b></div><div class=metric>單一個股 20%<b id=t20>—</b></div><div class=metric>個股上限 40%<b id=t40>—</b></div><div class=metric>個股目前市值<b id=fsv>—</b></div></div></div></section>
-<section id=l class=page><div class=card><h2>正2策略</h2><div class=hint>此測試版保留個股功能測試重點；正式合併時保留 V2.5 正2功能。</div></div></section>
+<section id=l class=page>
+<div class=card>
+<h2>正2策略</h2>
+<div class=hint>00631L 元大台灣50正2｜初始目標 30%，依大盤自本輪高點回落分批提高配置；至少保留 10% 現金。</div>
+<div class=grid style="margin-top:14px">
+<label>00631L 現價<input id=lPrice type=number inputmode=decimal placeholder="例如 37.26"></label>
+<label>本輪大盤高點<input id=lPeak type=number inputmode=decimal placeholder="例如 46948.72"></label>
+<label>目前大盤指數<input id=lIndex type=number inputmode=decimal placeholder="例如 46948.72"></label>
+</div>
+<button onclick="saveLeveragedInputs()">儲存正2資料</button>
+<div id=lSignal class=empty style="margin-top:14px">輸入本輪大盤高點與目前指數後，自動判斷配置階段。</div>
+</div>
+
+<div class=card>
+<h2>正2買入紀錄</h2>
+<div class=grid>
+<label>買入價<input id=lBuyPrice type=number inputmode=decimal placeholder="買入價"></label>
+<label>張數<input id=lBuyLots type=number inputmode=decimal placeholder="張數"></label>
+</div>
+<button onclick="addLeveragedBuy()">＋新增買入</button>
+<div id=lBuys class=empty style="margin-top:14px">尚未新增買入紀錄。</div>
+</div>
+
+<div class=card>
+<h2>目前正2部位</h2>
+<div class=grid>
+<div class=metric>持有張數<b id=lLots>0</b></div>
+<div class=metric>加權成本<b id=lAvg>-</b></div>
+<div class=metric>持有成本<b id=lCost>-</b></div>
+<div class=metric>目前市值<b id=lValue>-</b></div>
+<div class=metric>損益<b id=lPnl>-</b></div>
+<div class=metric>損益率<b id=lPnlPct>-</b></div>
+</div>
+<div id=lRebalance class=empty style="margin-top:14px">當整體正2持倉相對加權成本達 +30%，提示再平衡回總資產 30%。</div>
+</div>
+
+<div class=card>
+<h2>配置規則</h2>
+<div class=hint>初始 30%｜回落 -15% → 40%｜-30% → 55%｜-45% → 75%｜-60% → 90%｜最低保留 10% 現金。</div>
+</div>
+</section>
 <section id=s class=page>
 <div class=card><h2>大盤濾網</h2><div class=hint>先判斷今天是否適合查看個股進場訊號。</div><div id=marketFilterBox class=empty>讀取大盤資料中…</div></div>
 <div class=card><h2>已買入個股</h2><div class=hint>系統判斷出場訊號；只有你輸入實際賣出後才扣除持股。</div>
@@ -53,7 +93,54 @@
 <script>
 const $=x=>document.getElementById(x),N=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—',M=n=>Number.isFinite(n)?'NT$ '+Math.round(n).toLocaleString('zh-TW'):'—';
 let st=JSON.parse(localStorage.getItem('tw26real')||'{"capital":2500000,"buys":[],"sales":[]}'),db={},meta={};if(!Array.isArray(st.buys))st.buys=[];if(!Array.isArray(st.sales))st.sales=[];
-function save(){localStorage.setItem('tw26real',JSON.stringify(st))} document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('on'));t.classList.add('on');$(t.dataset.p).classList.add('on')});
+function save(){localStorage.setItem('tw26real',JSON.stringify(st))} 
+function levState(){
+ if(!st.lev) st.lev={price:0,peak:0,index:0,buys:[]};
+ if(!Array.isArray(st.lev.buys)) st.lev.buys=[];
+ return st.lev;
+}
+function saveLeveragedInputs(){
+ const l=levState();
+ l.price=+$('lPrice').value||0;l.peak=+$('lPeak').value||0;l.index=+$('lIndex').value||0;
+ save();renderLeveraged();
+}
+function addLeveragedBuy(){
+ const l=levState(),p=+$('lBuyPrice').value||0,q=+$('lBuyLots').value||0;
+ if(p<=0||q<=0){alert('請輸入買入價與張數');return}
+ l.buys.push({price:p,lots:q,date:new Date().toISOString().slice(0,10)});
+ $('lBuyPrice').value='';$('lBuyLots').value='';save();renderLeveraged();
+}
+function delLeveragedBuy(i){levState().buys.splice(i,1);save();renderLeveraged()}
+function renderLeveraged(){
+ const l=levState();
+ if($('lPrice')) $('lPrice').value=l.price||'';
+ if($('lPeak')) $('lPeak').value=l.peak||'';
+ if($('lIndex')) $('lIndex').value=l.index||'';
+ let dd=(l.peak>0&&l.index>0)?(l.index/l.peak-1)*100:null,target=30,stage='初始配置';
+ if(dd!==null){
+   if(dd<=-60){target=90;stage='回落 -60% 階段'}
+   else if(dd<=-45){target=75;stage='回落 -45% 階段'}
+   else if(dd<=-30){target=55;stage='回落 -30% 階段'}
+   else if(dd<=-15){target=40;stage='回落 -15% 階段'}
+ }
+ if($('lSignal')) $('lSignal').innerHTML=dd===null?'輸入本輪大盤高點與目前指數後，自動判斷配置階段。':
+ `<b>${stage}｜正2目標 ${target}%</b><div class=small style="margin-top:6px">目前大盤距本輪高點 ${dd.toFixed(2)}%｜現金至少保留 10%</div>`;
+ let lots=0,cost=0;
+ l.buys.forEach(x=>{lots+=+x.lots;cost+=(+x.price)*(+x.lots)*1000});
+ let avg=lots?cost/(lots*1000):0,val=l.price?l.price*lots*1000:0,pnl=val-cost,pct=cost?pnl/cost*100:0;
+ if($('lLots')) $('lLots').textContent=N(lots);
+ if($('lAvg')) $('lAvg').textContent=avg?N(avg):'-';
+ if($('lCost')) $('lCost').textContent=cost?'$'+Math.round(cost).toLocaleString():'-';
+ if($('lValue')) $('lValue').textContent=val?'$'+Math.round(val).toLocaleString():'-';
+ if($('lPnl')) $('lPnl').textContent=(val&&cost)?((pnl>=0?'+':'')+'$'+Math.round(pnl).toLocaleString()):'-';
+ if($('lPnlPct')) $('lPnlPct').textContent=cost?((pct>=0?'+':'')+pct.toFixed(2)+'%'):'-';
+ if($('lRebalance')) $('lRebalance').innerHTML=cost&&pct>=30?
+ '<b>🟢 已達 +30% 再平衡條件</b><div class=small style="margin-top:6px">依規則將正2調回目前總資產 30%，其餘轉回現金，並重設本輪週期。</div>':
+ '尚未達 +30% 再平衡條件。';
+ if($('lBuys')) $('lBuys').innerHTML=l.buys.length?l.buys.map((x,i)=>`<div class=row><div><b>${x.date}</b><div class=small>買入 ${N(+x.price)}｜${N(+x.lots)} 張</div></div><button class=ghost onclick="delLeveragedBuy(${i})">刪除</button></div>`).join(''):'尚未新增買入紀錄。';
+}
+
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('on'));t.classList.add('on');$(t.dataset.p).classList.add('on')});
 $('capital').value=st.capital;$('capital').oninput=e=>{st.capital=+e.target.value;save();render()};
 async function load(){$('scanStatus').textContent='載入全市場資料中…';$('scanMeta').textContent='—';try{const [d,m]=await Promise.all([fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('stocks.json HTTP '+r.status);return r.json()}),fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]);db=d||{};meta=m||{};$('scanStatus').textContent='全市場資料已載入';const cnt=Object.keys(db).length;$('scanMeta').textContent=`有效 ${cnt.toLocaleString('zh-TW')} 檔${meta.generated_at?'・更新 '+meta.generated_at:''}`}catch(e){db={};meta={};$('scanStatus').textContent='資料載入失敗';$('scanMeta').textContent=String(e.message||e)}render()}
 function I(c){return db[c]||{}} function P(c){return +I(c).price} function rem(c){return st.buys.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)-st.sales.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)}
