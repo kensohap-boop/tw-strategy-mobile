@@ -132,7 +132,7 @@ def calc(code, name, market):
 def calc_market_filter():
     """Calculate TAIEX MA filter from Yahoo ^TWII daily history."""
     url = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETWII?range=2y&interval=1d&events=div%2Csplits"
-    data = get_json(url)
+    data = fetch_json(url)
     result = data["chart"]["result"][0]
     closes = [x for x in result["indicators"]["quote"][0]["close"] if x is not None]
     if len(closes) < 240:
