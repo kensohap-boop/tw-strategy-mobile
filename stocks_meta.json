@@ -1,7 +1,30 @@
 {
-  "generated_at": "",
-  "universe": 0,
+  "generated_at": "2026-09-01 21:32:02",
+  "universe": 2391,
   "success": 0,
-  "failed": 0,
-  "status": "Run Update stock scanner workflow first"
+  "failed": 2391,
+  "source_universe": "TWSE OpenAPI + TPEx OpenAPI",
+  "source_history": "Yahoo Finance chart endpoint (unofficial)",
+  "failed_sample": {
+    "00401A": "HTTP Error 429: Too Many Requests",
+    "00403A": "HTTP Error 429: Too Many Requests",
+    "00407A": "HTTP Error 429: Too Many Requests",
+    "00405A": "HTTP Error 429: Too Many Requests",
+    "00404A": "HTTP Error 429: Too Many Requests",
+    "00400A": "HTTP Error 429: Too Many Requests",
+    "00406A": "HTTP Error 429: Too Many Requests",
+    "00402A": "HTTP Error 429: Too Many Requests",
+    "00408A": "HTTP Error 429: Too Many Requests",
+    "0050": "HTTP Error 429: Too Many Requests",
+    "0052": "HTTP Error 429: Too Many Requests",
+    "0051": "HTTP Error 429: Too Many Requests",
+    "0056": "HTTP Error 429: Too Many Requests",
+    "0055": "HTTP Error 429: Too Many Requests",
+    "00410A": "HTTP Error 429: Too Many Requests",
+    "0053": "HTTP Error 429: Too Many Requests",
+    "0061": "HTTP Error 429: Too Many Requests",
+    "0057": "HTTP Error 429: Too Many Requests",
+    "006204": "HTTP Error 429: Too Many Requests",
+    "006203": "HTTP Error 429: Too Many Requests"
+  }
 }
