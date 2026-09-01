@@ -1,171 +1,187 @@
-#!/usr/bin/env python3
-import concurrent.futures
-import datetime as dt
 import json
-import math
 import time
-import urllib.parse
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from statistics import mean
 
-TWSE = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
-TPEX = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
-YAHOO = "https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=2y&interval=1d&events=div%2Csplits"
+TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
+TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 
-UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/124 Safari/537.36"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0",
+    "Accept": "application/json,text/plain,*/*",
+}
 
-def get_json(url, timeout=30):
-    req = urllib.request.Request(url, headers={
-        "User-Agent": UA,
-        "Accept": "application/json,text/plain,*/*",
-    })
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.load(r)
+def fetch_json(url, timeout=20, retries=3):
+    last = None
+    for i in range(retries):
+        try:
+            req = urllib.request.Request(url, headers=HEADERS)
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return json.loads(r.read().decode("utf-8"))
+        except Exception as e:
+            last = e
+            time.sleep(1.5 * (i + 1))
+    raise last
 
-def clean_num(x):
-    if x is None:
-        return None
-    s = str(x).replace(",", "").replace("--", "").strip()
-    try:
-        return float(s)
-    except Exception:
-        return None
+def get_universe():
+    out = []
+    seen = set()
 
-def universe():
-    out = {}
-    # TWSE listed
-    for r in get_json(TWSE):
+    twse = fetch_json(TWSE_URL)
+    for r in twse:
         code = str(r.get("Code", "")).strip()
         name = str(r.get("Name", "")).strip()
-        if code and code[0].isdigit():
-            out[code] = {"name": name, "suffix": ".TW", "market": "TWSE"}
+        if code.isdigit() and len(code) == 4 and code not in seen:
+            seen.add(code)
+            out.append((code, name, "TW"))
 
-    # TPEx OTC
-    for r in get_json(TPEX):
+    tpex = fetch_json(TPEX_URL)
+    for r in tpex:
         code = str(r.get("SecuritiesCompanyCode", "")).strip()
         name = str(r.get("CompanyName", "")).strip()
-        if code and code[0].isdigit():
-            out[code] = {"name": name, "suffix": ".TWO", "market": "TPEx"}
+        if code.isdigit() and len(code) == 4 and code not in seen:
+            seen.add(code)
+            out.append((code, name, "TWO"))
 
     return out
 
-def avg(xs):
-    xs = [x for x in xs if isinstance(x, (int, float)) and math.isfinite(x)]
-    return sum(xs)/len(xs) if xs else None
+def fetch_yahoo_chart(code, market):
+    suffix = ".TW" if market == "TW" else ".TWO"
+    symbol = code + suffix
+    url = (
+        "https://query1.finance.yahoo.com/v8/finance/chart/"
+        + symbol
+        + "?range=2y&interval=1d&includePrePost=false&events=div%2Csplits"
+    )
+    data = fetch_json(url, timeout=20, retries=2)
+    result = (((data or {}).get("chart") or {}).get("result") or [])
+    if not result:
+        raise RuntimeError("Yahoo result empty")
 
-def fetch_one(item):
-    code, meta = item
-    symbol = code + meta["suffix"]
-    url = YAHOO.format(symbol=urllib.parse.quote(symbol))
+    r = result[0]
+    ts = r.get("timestamp") or []
+    quote = (((r.get("indicators") or {}).get("quote") or [{}])[0])
+    close = quote.get("close") or []
+    high = quote.get("high") or []
+    low = quote.get("low") or []
+    volume = quote.get("volume") or []
 
-    last_err = None
-    for attempt in range(3):
-        try:
-            body = get_json(url, timeout=25)
-            result = (body.get("chart", {}).get("result") or [None])[0]
-            if not result:
-                raise RuntimeError("no chart result")
+    rows = []
+    n = min(len(ts), len(close), len(volume))
+    for i in range(n):
+        c = close[i]
+        v = volume[i]
+        if c is None or v is None:
+            continue
+        rows.append({
+            "close": float(c),
+            "high": float(high[i]) if i < len(high) and high[i] is not None else float(c),
+            "low": float(low[i]) if i < len(low) and low[i] is not None else float(c),
+            "volume_lots": float(v) / 1000.0,
+        })
 
-            timestamps = result.get("timestamp") or []
-            q = ((result.get("indicators") or {}).get("quote") or [{}])[0]
-            closes = q.get("close") or []
-            vols = q.get("volume") or []
+    if len(rows) < 240:
+        raise RuntimeError(f"insufficient history: {len(rows)}")
+    return rows
 
-            rows = []
-            for i, ts in enumerate(timestamps):
-                c = clean_num(closes[i] if i < len(closes) else None)
-                v = clean_num(vols[i] if i < len(vols) else None)
-                if c is None:
-                    continue
-                rows.append((ts, c, v if v is not None else 0.0))
+def calc(code, name, market):
+    rows = fetch_yahoo_chart(code, market)
+    closes = [r["close"] for r in rows]
+    vols = [r["volume_lots"] for r in rows]
 
-            if len(rows) < 240:
-                raise RuntimeError(f"history too short: {len(rows)}")
+    price = closes[-1]
+    ma5 = mean(closes[-5:])
+    ma10 = mean(closes[-10:])
+    ma20 = mean(closes[-20:])
+    ma240 = mean(closes[-240:])
+    v20 = mean(vols[-20:])
+    vt = vols[-1]
 
-            rows = rows[-300:]
-            close = [x[1] for x in rows]
-            vol_shares = [x[2] for x in rows]
+    vals = [price, ma5, ma10, ma20]
+    compact = ((max(vals) - min(vals)) / min(vals)) <= 0.05
+    above240 = price > ma240
+    bull = ma5 > ma10 > ma20
+    liquid = v20 > 10000
+    breakout = price > ma5 and price > ma10 and price > ma20
+    volume2x = vt > 2 * v20
 
-            price = close[-1]
-            ma5 = avg(close[-5:])
-            ma10 = avg(close[-10:])
-            ma20 = avg(close[-20:])
-            ma240 = avg(close[-240:])
-            volume_lots = vol_shares[-1] / 1000.0
-            volume20_avg_lots = avg(vol_shares[-20:]) / 1000.0
-
-            vals = [price, ma5, ma10, ma20]
-            ma_converged = ((max(vals) - min(vals)) / min(vals)) <= 0.05
-            above_ma240 = price > ma240
-            bullish = ma5 > ma10 > ma20
-            volume20_gt_10000 = volume20_avg_lots > 10000
-            above_all_short = price > ma5 and price > ma10 and price > ma20
-            volume_surge_2x = volume_lots > volume20_avg_lots * 2
-
-            trade_date = dt.datetime.fromtimestamp(rows[-1][0], tz=dt.timezone.utc).astimezone(
-                dt.timezone(dt.timedelta(hours=8))
-            ).strftime("%Y-%m-%d")
-
-            return code, {
-                "name": meta["name"],
-                "market": meta["market"],
-                "price": round(price, 4),
-                "ma5": round(ma5, 4),
-                "ma10": round(ma10, 4),
-                "ma20": round(ma20, 4),
-                "ma240": round(ma240, 4),
-                "volume_lots": round(volume_lots, 2),
-                "volume20_avg_lots": round(volume20_avg_lots, 2),
-                "ma_converged": ma_converged,
-                "above_ma240": above_ma240,
-                "bullish": bullish,
-                "volume20_gt_10000": volume20_gt_10000,
-                "above_all_short_ma": above_all_short,
-                "volume_surge_2x": volume_surge_2x,
-                # Backward-compatible aliases used by older UI builds
-                "ma240_up": None,
-                "volume_gt_1000": None,
-                "kd_up": None,
-                "revenue_strong": None,
-                "updated_at": trade_date,
-            }
-        except Exception as e:
-            last_err = e
-            time.sleep(1.2 * (attempt + 1))
-    return code, {"_error": str(last_err), "name": meta["name"], "market": meta["market"]}
+    return code, {
+        "code": code,
+        "name": name,
+        "market": "TWSE" if market == "TW" else "TPEx",
+        "price": round(price, 4),
+        "ma5": round(ma5, 4),
+        "ma10": round(ma10, 4),
+        "ma20": round(ma20, 4),
+        "ma240": round(ma240, 4),
+        "volume_lots": round(vt, 2),
+        "volume20_avg_lots": round(v20, 2),
+        "conditions": {
+            "compact_ma": compact,
+            "above_ma240": above240,
+            "bullish": bull,
+            "liquid_20d_gt_10000": liquid,
+            "breakout": breakout,
+            "volume_2x": volume2x,
+        },
+    }
 
 def main():
-    uni = universe()
-    print("Universe:", len(uni))
+    universe = get_universe()
+    print(f"Universe: {len(universe)}")
 
     results = {}
-    errors = {}
-    # Conservative concurrency to reduce Yahoo throttling.
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as ex:
-        futs = [ex.submit(fetch_one, item) for item in uni.items()]
-        for idx, fut in enumerate(concurrent.futures.as_completed(futs), 1):
-            code, data = fut.result()
-            if "_error" in data:
-                errors[code] = data["_error"]
-            else:
-                results[code] = data
-            if idx % 100 == 0:
-                print(f"Processed {idx}/{len(futs)}; ok={len(results)} err={len(errors)}")
+    errors = []
+    ok = 0
 
-    payload = results
-    with open("stocks.json", "w", encoding="utf-8") as f:
-        json.dump(payload, f, ensure_ascii=False, separators=(",", ":"))
+    # Reduce concurrency to lower the chance of rate-limiting.
+    with ThreadPoolExecutor(max_workers=3) as ex:
+        futs = {ex.submit(calc, *item): item for item in universe}
+        for i, fut in enumerate(as_completed(futs), start=1):
+            item = futs[fut]
+            try:
+                code, rec = fut.result()
+                results[code] = rec
+                ok += 1
+            except Exception as e:
+                if len(errors) < 50:
+                    errors.append({
+                        "code": item[0],
+                        "market": item[2],
+                        "error": str(e),
+                    })
+
+            if i % 100 == 0:
+                print(f"Processed {i}/{len(universe)}; ok={ok} err={i-ok}")
 
     meta = {
-        "generated_at": dt.datetime.now(dt.timezone(dt.timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S"),
-        "universe": len(uni),
-        "success": len(results),
-        "failed": len(errors),
-        "source_universe": "TWSE OpenAPI + TPEx OpenAPI",
-        "source_history": "Yahoo Finance chart endpoint (unofficial)",
-        "failed_sample": dict(list(errors.items())[:20]),
+        "generated_at": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "universe": len(universe),
+        "ok": ok,
+        "errors": len(universe) - ok,
+        "sample_errors": errors,
     }
-    with open("stocks_meta.json", "w", encoding="utf-8") as f:
-        json.dump(meta, f, ensure_ascii=False, indent=2)
+
+    Path("stocks_meta.json").write_text(
+        json.dumps(meta, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    # Do not allow a false-green workflow with empty data.
+    min_required = max(100, int(len(universe) * 0.20))
+    if ok < min_required:
+        print(json.dumps(meta, ensure_ascii=False, indent=2))
+        raise SystemExit(
+            f"Too few successful stocks: {ok}/{len(universe)}. "
+            "stocks.json was NOT overwritten."
+        )
+
+    Path("stocks.json").write_text(
+        json.dumps(results, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
     print(json.dumps(meta, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
