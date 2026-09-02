@@ -123,6 +123,42 @@ def compact_research(rows,i):
         out[str(int(t*100))]={"days":d,**compact_volume_features(rows,i,d)}
     return out
 
+def prebreak_day_features(rows,i):
+    """Research-only D-2 / D-1 / D0 price-volume features; no strategy rules changed."""
+    def one(j):
+        if j < 0 or j >= len(rows): return None
+        r=rows[j]
+        o=r.get("open"); h=r.get("high"); l=r.get("low"); c=r.get("close")
+        v=r.get("volume_lots"); v20=r.get("vol20")
+        prev=rows[j-1].get("close") if j>0 else None
+        rng=(h-l) if h is not None and l is not None else None
+        return {
+            "date":r.get("date"),
+            "open":o,"high":h,"low":l,"close":c,
+            "return_pct":((c/prev-1)*100 if prev and c else None),
+            "range_pct":((h-l)/prev*100 if prev and h is not None and l is not None else None),
+            "body_pct":((c-o)/o*100 if o and c else None),
+            "close_location_pct":(((c-l)/rng)*100 if rng and c is not None and l is not None else None),
+            "volume_lots":v,
+            "vol20":v20,
+            "volume_vs_20d":(v/v20 if v20 else None),
+            "close_vs_ma5_pct":((c/r["ma5"]-1)*100 if c and r.get("ma5") else None),
+            "close_vs_ma10_pct":((c/r["ma10"]-1)*100 if c and r.get("ma10") else None),
+            "close_vs_ma20_pct":((c/r["ma20"]-1)*100 if c and r.get("ma20") else None),
+            "ma_spread_pct":(ma_spread_ratio(r)*100 if ma_spread_ratio(r) is not None else None),
+        }
+    d2=one(i-2); d1=one(i-1); d0=one(i)
+    def ratio(a,b):
+        return (a/b if a is not None and b not in (None,0) else None)
+    return {
+        "d_minus_2":d2,
+        "d_minus_1":d1,
+        "d0":d0,
+        "d1_volume_vs_d2":ratio(d1.get("volume_lots") if d1 else None,d2.get("volume_lots") if d2 else None),
+        "d1_range_vs_d2":ratio(d1.get("range_pct") if d1 else None,d2.get("range_pct") if d2 else None),
+        "d0_volume_vs_d1":ratio(d0.get("volume_lots") if d0 else None,d1.get("volume_lots") if d1 else None),
+    }
+
 def day_bucket(d):
     if d<=0:return "0天"
     if d<=3:return "1-3天"
@@ -167,7 +203,8 @@ def process_stock(code,name,market,rows,mktmap,start_date):
         if r["date"]<start_date or i+2>=len(rows) or not mother(r):continue
         cid,bits=combo(r,mktmap.get(r["date"],False)); mid=(r["high"]+r["low"])/2
         research=compact_research(rows,i)
-        d0s.append({"code":code,"name":name,"date":r["date"],"close":round(r["close"],4),"combo_id":cid,"compact_research":research})
+        prebreak=prebreak_day_features(rows,i)
+        d0s.append({"code":code,"name":name,"date":r["date"],"close":round(r["close"],4),"combo_id":cid,"compact_research":research,"prebreak_research":prebreak})
         d1=rows[i+1]; c1=d1["close"]; entries=[]
         if limit_up_close(d1):entries.append(("S1",i+1,c1))
         if c1<(d1.get("ma5") or -math.inf) or c1<mid:entries.append(("S2",i+1,c1))
@@ -181,7 +218,7 @@ def process_stock(code,name,market,rows,mktmap,start_date):
         for sid,ei,ep in entries:
             o=outcome(rows,ei,ep)
             if o and o["strategy_return_pct"] is not None:
-                samples.append({"scenario":sid,"combo_id":cid,"code":code,"name":name,"d0_date":r["date"],"entry_date":rows[ei]["date"],"entry_price":ep,"compact_research":research,**o})
+                samples.append({"scenario":sid,"combo_id":cid,"code":code,"name":name,"d0_date":r["date"],"entry_date":rows[ei]["date"],"entry_price":ep,"compact_research":research,"prebreak_research":prebreak,**o})
     return samples,d0s
 
 def main():
@@ -236,10 +273,10 @@ def main():
     s1_trades=[{"code":x["code"],"name":x["name"],"d0_date":x["d0_date"],
         "entry_date":x["entry_date"],"entry_price":round(x["entry_price"],4),"combo_id":x["combo_id"],
         "strategy_return_pct":round(x["strategy_return_pct"],4),"hit20":x["hit20"],
-        "exits":x["exits"],"compact_research":x["compact_research"]}
+        "exits":x["exits"],"compact_research":x["compact_research"],"prebreak_research":x["prebreak_research"]}
         for x in all_samples if x["scenario"]=="S1"]
 
-    result={'schema_version':'2026-09-02.backtest10y.3','generated_at':now.isoformat(),'period':{'start':start,'end':now.date().isoformat(),'years':a.years},'methodology':{'purpose':'exploratory historical baseline; forward daily data remains out-of-sample validation','universe':'current TWSE/TPEx universe; survivorship bias possible','price_source':'Yahoo Finance daily chart, OHLC adjusted by adjclose/close factor','limit_up_note':'historical limit-up close approximated as adjusted close return >=9.5%; validate important rows against official data','mother_filter':'MA5/10/20 spread <=5%; D0 return >0; D0 close above MA5/10/20','compact_research_note':'research only; mother filter is now 5%. Pre-D0 consecutive MA5/10/20 spread <=2/3/4/5%, with volume descriptors.','exit_rules':['intraday high reaches +20%: sell half of current remaining at +20%','close below MA5: sell half of current remaining','close below MA10: sell all remaining','D10: sell all remaining','same-day priority MA10 > +20% > MA5']},'universe_count':len(items),'failed_symbols':failures,'d0_count':len(all_d0),'completed_strategy_samples':len(all_samples),'yearly':[{'year':y,'samples':len(v),'avg_return_pct':round(sum(v)/len(v),4),'profit_rate_pct':round(sum(x>0 for x in v)/len(v)*100,2)} for y,v in sorted(yearly.items())],'combination_stats':rows,'top20':ranked[:20],'compact_duration_stats':compact_stats,'s1_trade_details':s1_trades}
+    result={'schema_version':'2026-09-03.backtest10y.4','generated_at':now.isoformat(),'period':{'start':start,'end':now.date().isoformat(),'years':a.years},'methodology':{'purpose':'exploratory historical baseline; forward daily data remains out-of-sample validation','universe':'current TWSE/TPEx universe; survivorship bias possible','price_source':'Yahoo Finance daily chart, OHLC adjusted by adjclose/close factor','limit_up_note':'historical limit-up close approximated as adjusted close return >=9.5%; validate important rows against official data','mother_filter':'MA5/10/20 spread <=5%; D0 return >0; D0 close above MA5/10/20','compact_research_note':'research only; mother filter is 5%. Pre-D0 compact-duration research retained. Added D-2/D-1/D0 daily price-volume features to study pre-breakout commonality; strategy rules unchanged.','exit_rules':['intraday high reaches +20%: sell half of current remaining at +20%','close below MA5: sell half of current remaining','close below MA10: sell all remaining','D10: sell all remaining','same-day priority MA10 > +20% > MA5']},'universe_count':len(items),'failed_symbols':failures,'d0_count':len(all_d0),'completed_strategy_samples':len(all_samples),'yearly':[{'year':y,'samples':len(v),'avg_return_pct':round(sum(v)/len(v),4),'profit_rate_pct':round(sum(x>0 for x in v)/len(v)*100,2)} for y,v in sorted(yearly.items())],'combination_stats':rows,'top20':ranked[:20],'compact_duration_stats':compact_stats,'s1_trade_details':s1_trades}
     Path(a.out).write_text(json.dumps(result,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
     print('wrote',a.out,'D0',len(all_d0),'samples',len(all_samples),'eligible',len(ranked))
 if __name__=='__main__': main()
