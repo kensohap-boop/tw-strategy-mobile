@@ -31,12 +31,13 @@
 .ltable tr.active{background:#153653}
 
 .statsScroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:12px}.statsTable{width:100%;min-width:620px;border-collapse:collapse;font-size:13px}.statsTable th,.statsTable td{padding:12px 9px;border-bottom:1px solid var(--l);text-align:right;white-space:nowrap}.statsTable th:first-child,.statsTable td:first-child{text-align:left;min-width:180px}.statsTable tbody tr:first-child{background:#153653}.statsTable .pos{color:var(--g);font-weight:900}.statsTable .neg{color:var(--r);font-weight:900}.statsTable .countCell{font-weight:900}
-</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V4.0・完整策略版</div>
+</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V4.1・提醒同步版</div>
 <div class=tabs><div class="tab on" data-p=f>資金總覽</div><div class=tab data-p=l>正2策略</div><div class=tab data-p=s>個股</div><div class=tab data-p=a>統計分析</div></div>
 <section id=f class="page on">
 <div class=card><h2>資金總覽</h2><div class=hint>持股資訊由正2與個股頁自動彙總。</div><label class=m>目前可動用總資金（含持股市值）</label><input id=capital type=number placeholder="2500000"><div class=grid><div class=metric>正2目標 30%<b id=t30>—</b></div><div class=metric>單一個股 20%<b id=t20>—</b></div><div class=metric>個股上限 40%<b id=t40>—</b></div><div class=metric>預估可用現金<b id=fCash>—</b></div></div></div>
 <div class=card><h2>目前正2投資狀況</h2><div class=grid><div class=metric>投入成本<b id=fLevCost>—</b></div><div class=metric>目前市值<b id=fLevValue>—</b></div><div class=metric>未實現損益<b id=fLevPnl>—</b></div><div class=metric>資金占比<b id=fLevAlloc>—</b></div></div></div>
 <div class=card><h2>目前個股投資狀況</h2><div class=grid><div class=metric>剩餘成本<b id=fStockCost>—</b></div><div class=metric>目前市值<b id=fStockValue>—</b></div><div class=metric>未實現損益<b id=fStockPnl>—</b></div><div class=metric>資金占比<b id=fStockAlloc>—</b></div></div></div>
+<div class=card><h2>提醒同步</h2><div class=hint>讓 13:00 / 20:00 提醒讀到你目前的實際持倉。Token 只存這台裝置，不會寫進網頁程式。</div><label class=m>GitHub Fine-grained Token（僅此 repo Contents 讀寫）</label><input id=ghToken type=password placeholder="github_pat_..."><label class=small style="display:flex;gap:8px;align-items:flex-start;margin:8px 0"><input id=syncConsent type=checkbox style="width:auto;margin-top:2px">我了解同步後的 portfolio_state.json 會存在目前公開 GitHub repo，任何知道網址的人都可能看到持倉摘要。</label><div class=actions><button onclick="saveSyncSettings()">儲存同步設定</button><button onclick="syncPortfolio(true)">立即同步提醒資料</button></div><div id=syncStatus class=empty style="margin-top:12px">尚未設定提醒同步。</div></div>
 </section>
 <section id=l class=page>
 
@@ -126,11 +127,27 @@
 <div id=detailModal class=modal onclick="if(event.target===this)closeDetail()"><div class=sheet><div class=sheettop><h2 id=detailTitle>個股詳細資料</h2><button class=close onclick=closeDetail()>關閉</button></div><div id=detailBody></div></div></div>
 <script>
 const $=x=>document.getElementById(x),N=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—',M=n=>Number.isFinite(n)?'NT$ '+Math.round(n).toLocaleString('zh-TW'):'—';
-const STATE_KEY='tw26real';
+const STATE_KEY='tw26real',SYNC_KEY='tw26sync';
+const GH_OWNER='kensohap-boop',GH_REPO='tw-strategy-mobile',GH_BRANCH='main',PORTFOLIO_FILE='portfolio_state.json';
 let st={capital:2500000,buys:[],sales:[]},db={},meta={},statsData={},strategyConfig={compact_ma_pct:.05,min_avg_volume_lots:10000,volume_multiplier:2,support_max_gap_pct:.05,tracking_days:10};
+let syncCfg={token:'',consent:false},syncTimer=null;
 try{const raw=localStorage.getItem(STATE_KEY);if(raw)st={...st,...JSON.parse(raw)}}catch(e){}
+try{const raw=localStorage.getItem(SYNC_KEY);if(raw)syncCfg={...syncCfg,...JSON.parse(raw)}}catch(e){}
 if(!Array.isArray(st.buys))st.buys=[];if(!Array.isArray(st.sales))st.sales=[];
-function save(){try{localStorage.setItem(STATE_KEY,JSON.stringify(st))}catch(e){console.warn('localStorage save failed',e)}} 
+function save(){try{localStorage.setItem(STATE_KEY,JSON.stringify(st))}catch(e){console.warn('localStorage save failed',e)}schedulePortfolioSync()}
+function syncStatus(msg,ok){const e=$('syncStatus');if(!e)return;e.className=ok===true?'status ok':ok===false?'status bad':'empty';e.textContent=msg}
+function saveSyncSettings(){syncCfg.token=($('ghToken')?.value||'').trim();syncCfg.consent=!!$('syncConsent')?.checked;try{localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg))}catch(e){};if(!syncCfg.token){syncStatus('尚未輸入 GitHub Token。',false);return}if(!syncCfg.consent){syncStatus('尚未勾選公開持倉摘要同意。',false);return}syncStatus('同步設定已儲存，之後持倉異動會自動同步。',true);syncPortfolio(true)}
+function schedulePortfolioSync(){if(!syncCfg.token||!syncCfg.consent)return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncPortfolio(false),2500)}
+function portfolioSnapshot(){
+ const cap=+st.capital||0,l=levState();let levLots=0,levCost=0;l.buys.forEach(x=>{levLots+=+x.lots||0;levCost+=(+x.price||0)*(+x.lots||0)*1000});const levAvg=levLots?levCost/(levLots*1000):null;
+ const codes=[...new Set(st.buys.map(x=>x.c))].filter(c=>rem(c)>0);
+ const holdings=codes.map(c=>{const i=I(c),lots=rem(c),a=avg(c),p=P(c);return{code:c,name:i.name||'',lots,avg_cost:Number.isFinite(a)?a:null,latest_price:Number.isFinite(p)?p:null,ma5:Number.isFinite(+i.ma5)?+i.ma5:null,ma10:Number.isFinite(+i.ma10)?+i.ma10:null};});
+ return{updated_at:new Date().toISOString(),capital:cap,leveraged:{code:'00631L',lots:levLots,avg_cost:levAvg,latest_price:+l.price||null,peak_index:+l.peak||null,taiex:+l.index||null},holdings};
+}
+async function syncPortfolio(manual){
+ if(!syncCfg.token||!syncCfg.consent){if(manual)syncStatus('請先輸入 Token 並勾選同意。',false);return}
+ try{syncStatus('正在同步提醒資料…');const api=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${PORTFOLIO_FILE}`;const h={Accept:'application/vnd.github+json',Authorization:`Bearer ${syncCfg.token}`,'X-GitHub-Api-Version':'2022-11-28'};let sha=null;const g=await fetch(api+'?ref='+GH_BRANCH,{headers:h});if(g.ok){const j=await g.json();sha=j.sha}else if(g.status!==404)throw new Error('讀取 GitHub 失敗 HTTP '+g.status);const content=btoa(unescape(encodeURIComponent(JSON.stringify(portfolioSnapshot(),null,2))));const body={message:'Sync portfolio reminder state',content,branch:GH_BRANCH};if(sha)body.sha=sha;const r=await fetch(api,{method:'PUT',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error('寫入 GitHub 失敗 HTTP '+r.status);syncStatus('已同步・'+new Date().toLocaleString('zh-TW'),true)}catch(e){console.warn(e);syncStatus(String(e.message||e),false)}
+}
 function levState(){
  if(!st.lev) st.lev={price:0,peak:0,index:0,buys:[],updated:'',draft_price:'',draft_lots:''};
  if(!Array.isArray(st.lev.buys)) st.lev.buys=[];
@@ -290,6 +307,7 @@ function renderStats(){
 }
 
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('on'));t.classList.add('on');$(t.dataset.p).classList.add('on')});
+if($('ghToken'))$('ghToken').value=syncCfg.token||'';if($('syncConsent'))$('syncConsent').checked=!!syncCfg.consent;if(syncCfg.token&&syncCfg.consent)syncStatus('提醒同步已啟用；持倉異動會自動同步。',true);
 $('capital').value=st.capital;$('capital').oninput=e=>{st.capital=+e.target.value;save();render()};
 const lp=$('lPeak'),lbp=$('lBuyPrice'),lbl=$('lBuyLots');
 if(lp)lp.addEventListener('input',e=>{levState().peak=+e.target.value||0;save();renderLeveraged()});
@@ -374,5 +392,5 @@ set('fLevCost',levCost?M(levCost):'—');set('fLevValue',levValue?M(levValue):'�
 set('fStockCost',stockCost?M(stockCost):'—');set('fStockValue',stockValue?M(stockValue):'—');set('fStockPnl',(stockCost||stockValue)?`${stockPnl>=0?'+':''}${M(stockPnl)}`:'—');set('fStockAlloc',cap>0?(stockValue/cap*100).toFixed(1)+'%':'—');set('fCash',cap>0?M(cash):'—');
 $('holds').innerHTML=codes.map(c=>{let i=I(c),p=P(c),a=avg(c),r=rem(c),ret=Number.isFinite(p)&&Number.isFinite(a)&&a>0?(p/a-1)*100:NaN,z=status(c),sales=st.sales.filter(x=>x.c==c),cost=Number.isFinite(a)?a*r*1000:NaN,mv=Number.isFinite(p)?p*r*1000:NaN,pnl=Number.isFinite(cost)&&Number.isFinite(mv)?mv-cost:NaN,alloc=cap>0&&Number.isFinite(mv)?mv/cap*100:NaN;return`<div class=item><div class=head><div><div class=nm>${c} ${i.name||''}</div><div class=m>剩 ${N(r)}張・成本 $${N(a)}・最新 ${Number.isFinite(p)?'$'+N(p):'等待掃描資料'}</div></div><span class="badge ${z[1]}">${z[0]}</span></div><div class=stats><div class=mini>目前市值<b>${Number.isFinite(mv)?M(mv):'—'}</b></div><div class=mini>未實現損益<b>${Number.isFinite(pnl)?`${pnl>=0?'+':''}${M(pnl)}`:'—'}</b></div><div class=mini>未實現報酬<b>${Number.isFinite(ret)?`${ret>=0?'+':''}${ret.toFixed(2)}%`:'—'}</b></div><div class=mini>資金占比<b>${Number.isFinite(alloc)?alloc.toFixed(1)+'%':'—'}</b></div><div class=mini>出場判斷<b>${z[2]}</b></div><div class=mini>MA5<b>${N(+i.ma5)}</b></div><div class=mini>MA10<b>${N(+i.ma10)}</b></div><div class=mini>資料日<b>${i.date||meta.generated_at||'—'}</b></div></div><div class=actions><button onclick="sell('${c}')">＋實際賣出</button></div>${sales.map(x=>`<div class=sale>${x.d}　賣出 $${N(x.p)} × ${N(x.l)}張</div>`).join('')}</div>`}).join('')||'<p class=m>尚未新增實際持股。</p>';
 renderScanner()}
-load();render();renderLeveraged();loadStats();setTimeout(refreshLeveragedMarket,100);
+load();render();renderLeveraged();loadStats();setTimeout(refreshLeveragedMarket,100);setTimeout(schedulePortfolioSync,5000);
 </script></body></html>
