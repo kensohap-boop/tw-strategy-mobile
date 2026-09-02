@@ -3,9 +3,9 @@ name: Update market data
 on:
   workflow_dispatch:
   schedule:
-    # During Taiwan trading hours: every 5 minutes from 09:00 through 13:55.
+    # Taiwan 09:00-13:55, every 5 minutes (UTC 01:00-05:55)
     - cron: "*/5 1-5 * * 1-5"
-    # Extra refresh at 08:00 and 15:00 Taiwan.
+    # Extra refresh at Taiwan 08:00 and 15:00
     - cron: "0 0,7 * * 1-5"
 
 permissions:
@@ -15,6 +15,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,60 +28,143 @@ jobs:
       - name: Update TAIEX and 00631L from TWSE MIS
         run: |
           python - <<'PY'
-          import json, urllib.request, datetime
+          import json
+          import urllib.request
+          import datetime
+          import time
           from pathlib import Path
 
-          URL = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw%7Ctse_00631L.tw&json=1&delay=0"
-          req = urllib.request.Request(URL, headers={
-              "User-Agent": "Mozilla/5.0",
-              "Accept": "application/json,text/plain,*/*",
-              "Referer": "https://mis.twse.com.tw/stock/index.jsp",
-          })
+          tz = datetime.timezone(datetime.timedelta(hours=8))
+          now = datetime.datetime.now(tz)
+          epoch_ms = int(time.time() * 1000)
+
+          # IMPORTANT: "_" prevents TWSE/CDN from returning a cached previous-day quote.
+          URL = (
+              "https://mis.twse.com.tw/stock/api/getStockInfo.jsp"
+              "?ex_ch=tse_t00.tw%7Ctse_00631L.tw"
+              "&json=1&delay=0"
+              f"&_={epoch_ms}"
+          )
+
+          req = urllib.request.Request(
+              URL,
+              headers={
+                  "User-Agent": "Mozilla/5.0",
+                  "Accept": "application/json,text/plain,*/*",
+                  "Referer": "https://mis.twse.com.tw/stock/index.jsp",
+                  "Cache-Control": "no-cache",
+                  "Pragma": "no-cache",
+              },
+          )
+
           with urllib.request.urlopen(req, timeout=30) as r:
               data = json.loads(r.read().decode("utf-8"))
 
+          if str(data.get("rtcode", "0000")) != "0000":
+              raise SystemExit(f"TWSE MIS rtcode error: {data.get('rtcode')} {data.get('rtmessage')}")
+
           rows = data.get("msgArray") or []
+
           def num(v):
               try:
                   s = str(v).replace(",", "").strip()
-                  if s in ("", "-", "--"): return None
+                  if s in ("", "-", "--", "None"):
+                      return None
                   return float(s)
               except Exception:
                   return None
 
-          taiex_row = next((x for x in rows if str(x.get("c", "")) in ("t00", "TAIEX") or "加權" in str(x.get("n", ""))), None)
+          def first_book_price(v):
+              if not v:
+                  return None
+              for part in str(v).split("_"):
+                  x = num(part)
+                  if x is not None and x > 0:
+                      return x
+              return None
+
+          taiex_row = next(
+              (
+                  x for x in rows
+                  if str(x.get("c", "")) in ("t00", "TAIEX")
+                  or "加權" in str(x.get("n", ""))
+              ),
+              None,
+          )
           etf_row = next((x for x in rows if str(x.get("c", "")) == "00631L"), None)
 
-          try:
-              old = json.loads(Path("market.json").read_text(encoding="utf-8"))
-          except Exception:
-              old = {}
+          if not taiex_row or not etf_row:
+              raise SystemExit(f"TWSE MIS missing rows. returned codes={[x.get('c') for x in rows]}")
 
-          idx = num((taiex_row or {}).get("z"))
-          etf = num((etf_row or {}).get("z"))
-          if idx is None:
-              idx = num(((old.get("taiex") or {}).get("price")))
+          # z = latest matched price. Do NOT silently substitute yesterday's close.
+          idx = num(taiex_row.get("z"))
+
+          # For ETF, if there has just been no matched trade, use the best bid/ask midpoint
+          # only as a temporary live quote fallback; never use yesterday's close as "live".
+          etf = num(etf_row.get("z"))
           if etf is None:
-              etf = num(((old.get("etf00631L") or {}).get("price")))
+              bid = first_book_price(etf_row.get("b"))
+              ask = first_book_price(etf_row.get("a"))
+              if bid is not None and ask is not None:
+                  etf = (bid + ask) / 2
+              elif bid is not None:
+                  etf = bid
+              elif ask is not None:
+                  etf = ask
 
-          if idx is None or etf is None:
-              raise SystemExit(f"TWSE MIS missing price: taiex={idx}, 00631L={etf}")
+          # During Taiwan trading hours, reject stale previous-day rows instead of
+          # overwriting market.json with a fresh timestamp + old prices.
+          in_session = (
+              now.weekday() < 5
+              and datetime.time(9, 0) <= now.time() <= datetime.time(14, 0)
+          )
+          today = now.strftime("%Y%m%d")
 
-          now = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=8)))
+          if in_session:
+              for label, row in (("TAIEX", taiex_row), ("00631L", etf_row)):
+                  d = str(row.get("d", "")).strip()
+                  if d and d != today:
+                      raise SystemExit(
+                          f"STALE TWSE MIS DATA: {label} trade_date={d}, today={today}. "
+                          "Refusing to publish old quote as live."
+                      )
+
+          if idx is None:
+              raise SystemExit(
+                  f"TWSE MIS TAIEX latest price z is empty. "
+                  f"d={taiex_row.get('d')} t={taiex_row.get('t')} row={taiex_row}"
+              )
+          if etf is None:
+              raise SystemExit(
+                  f"TWSE MIS 00631L live quote unavailable. "
+                  f"d={etf_row.get('d')} t={etf_row.get('t')}"
+              )
+
           def market_time(row):
-              d = str((row or {}).get("d", "")).strip()
-              t = str((row or {}).get("t", "")).strip()
+              d = str(row.get("d", "")).strip()
+              t = str(row.get("t", "")).strip()
               if len(d) == 8 and t:
                   return f"{d[:4]}-{d[4:6]}-{d[6:]} {t}"
               return now.strftime("%Y-%m-%d %H:%M:%S")
 
           out = {
               "updated_at": now.strftime("%Y-%m-%d %H:%M:%S"),
-              "source": "TWSE MIS",
-              "taiex": {"price": round(idx, 2), "market_time": market_time(taiex_row)},
-              "etf00631L": {"price": round(etf, 2), "market_time": market_time(etf_row)},
+              "source": "TWSE MIS live",
+              "taiex": {
+                  "price": round(idx, 2),
+                  "market_time": market_time(taiex_row),
+              },
+              "etf00631L": {
+                  "price": round(etf, 2),
+                  "market_time": market_time(etf_row),
+              },
           }
-          Path("market.json").write_text(json.dumps(out, ensure_ascii=False, indent=2), encoding="utf-8")
+
+          Path("market.json").write_text(
+              json.dumps(out, ensure_ascii=False, indent=2),
+              encoding="utf-8",
+          )
+
           print(json.dumps(out, ensure_ascii=False, indent=2))
           PY
 
@@ -89,8 +173,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add market.json
+
           if git diff --cached --quiet; then
-            echo "No change"
+            echo "No market data change"
           else
             git commit -m "Update live market data"
             git pull --rebase origin main
