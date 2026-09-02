@@ -277,7 +277,8 @@ def rebuild_signals_and_stats(cfg, generated_at):
         "signals": signals,
     }, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
-    buckets = {gid: [] for gid in GROUP_NAMES}
+    # 12 statistical buckets: A–F × market filter ON/OFF.
+    buckets = {(gid, filter_on): [] for gid in GROUP_NAMES for filter_on in (True, False)}
     for sig in signals:
         if not sig.get("support_confirmed"):
             continue
@@ -288,7 +289,8 @@ def rebuild_signals_and_stats(cfg, generated_at):
         highs = [float(x.get("high", x.get("close", base))) for x in tr]
         lows = [float(x.get("low", x.get("close", base))) for x in tr]
         closes = [float(x.get("close", base)) for x in tr]
-        buckets[sig["group"]].append({
+        filter_on = bool((sig.get("market_filter") or {}).get("filter_on", False))
+        buckets[(sig["group"], filter_on)].append({
             "max_up_pct": (max(highs) / base - 1) * 100,
             "max_down_pct": (min(lows) / base - 1) * 100,
             "cumulative_pct": (closes[-1] / base - 1) * 100,
@@ -297,22 +299,47 @@ def rebuild_signals_and_stats(cfg, generated_at):
         })
 
     groups = []
+    fixed_order = []
     for gid, name in GROUP_NAMES.items():
-        arr = buckets[gid]
-        if arr:
-            av = lambda k: sum(x[k] for x in arr) / len(arr)
-            row = {
-                "group": gid, "name": name,
-                "avg_max_up_pct": round(av("max_up_pct"), 4),
-                "avg_max_down_pct": round(av("max_down_pct"), 4),
-                "avg_cumulative_pct": round(av("cumulative_pct"), 4),
-                "samples": len(arr),
-                "complete_samples": sum(1 for x in arr if x["complete"]),
-            }
-        else:
-            row = {"group": gid, "name": name, "avg_max_up_pct": None, "avg_max_down_pct": None, "avg_cumulative_pct": None, "samples": 0, "complete_samples": 0}
-        groups.append(row)
-    groups.sort(key=lambda x: -9999 if x["avg_max_up_pct"] is None else x["avg_max_up_pct"], reverse=True)
+        for filter_on in (True, False):
+            fixed_order.append((gid, filter_on))
+            arr = buckets[(gid, filter_on)]
+            if arr:
+                av = lambda k: sum(x[k] for x in arr) / len(arr)
+                row = {
+                    "group": gid,
+                    "name": name,
+                    "market_filter_on": filter_on,
+                    "market_filter_label": "通過" if filter_on else "未通過",
+                    "avg_max_up_pct": round(av("max_up_pct"), 4),
+                    "avg_max_down_pct": round(av("max_down_pct"), 4),
+                    "avg_cumulative_pct": round(av("cumulative_pct"), 4),
+                    "samples": len(arr),
+                    "complete_samples": sum(1 for x in arr if x["complete"]),
+                }
+            else:
+                row = {
+                    "group": gid,
+                    "name": name,
+                    "market_filter_on": filter_on,
+                    "market_filter_label": "通過" if filter_on else "未通過",
+                    "avg_max_up_pct": None,
+                    "avg_max_down_pct": None,
+                    "avg_cumulative_pct": None,
+                    "samples": 0,
+                    "complete_samples": 0,
+                }
+            groups.append(row)
+
+    fixed_rank = {key: i for i, key in enumerate(fixed_order)}
+    groups.sort(
+        key=lambda x: (
+            x["samples"] <= 0,
+            -(x["avg_max_up_pct"] if x["avg_max_up_pct"] is not None else -999999),
+            fixed_rank[(x["group"], x["market_filter_on"])],
+        )
+    )
+
     summary = {
         "generated_at": generated_at,
         "basis": "support_close",
@@ -322,6 +349,145 @@ def rebuild_signals_and_stats(cfg, generated_at):
     }
     Path("stats_summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     return signals, summary
+
+def build_reminder_json(cfg, generated_at, results, market_filter, signals, stats):
+    """Create one compact public file for the 13:00 / 20:00 reminders."""
+    portfolio = load_json("portfolio_state.json", {})
+    market_data = load_json("market.json", {})
+
+    rank_map = {}
+    stats_rows = []
+    for rank, row in enumerate(stats.get("groups") or [], start=1):
+        key = (row.get("group"), bool(row.get("market_filter_on", False)))
+        rank_map[key] = rank
+        stats_rows.append({
+            "rank": rank,
+            "group": row.get("group"),
+            "market_filter_on": bool(row.get("market_filter_on", False)),
+            "market_filter_label": row.get("market_filter_label", "通過" if row.get("market_filter_on") else "未通過"),
+            "avg_max_up_pct": row.get("avg_max_up_pct"),
+            "avg_max_down_pct": row.get("avg_max_down_pct"),
+            "avg_cumulative_pct": row.get("avg_cumulative_pct"),
+            "samples": row.get("samples", 0),
+            "complete_samples": row.get("complete_samples", 0),
+        })
+
+    current_filter_on = bool((market_filter or {}).get("filter_on", False))
+
+    candidates = []
+    for code, rec in results.items():
+        gid = group_for(rec, cfg)
+        if not gid:
+            continue
+        candidates.append({
+            "code": code,
+            "name": rec.get("name", ""),
+            "market": rec.get("market", ""),
+            "group": gid,
+            "group_name": GROUP_NAMES.get(gid, gid),
+            "market_filter_on": current_filter_on,
+            "stats_rank": rank_map.get((gid, current_filter_on)),
+            "price": rec.get("price"),
+            "high": rec.get("high"),
+            "low": rec.get("low"),
+            "ma5": rec.get("ma5"),
+            "ma10": rec.get("ma10"),
+            "ma20": rec.get("ma20"),
+            "ma240": rec.get("ma240"),
+            "volume_lots": rec.get("volume_lots"),
+            "volume20_avg_lots": rec.get("volume20_avg_lots"),
+            "conditions": rec.get("conditions") or {},
+        })
+    candidates.sort(key=lambda x: (x.get("stats_rank") or 999, x.get("group") or "Z", x.get("code") or ""))
+
+    support_candidates = []
+    for sig in signals:
+        status = sig.get("status")
+        if status not in ("waiting_d1", "tracking"):
+            continue
+        gid = sig.get("group")
+        filter_on = bool((sig.get("market_filter") or {}).get("filter_on", False))
+        d0_close = float(sig.get("d0_close", 0) or 0)
+        d0_high = float(sig.get("d0_high", d0_close) or d0_close)
+        d0_low = float(sig.get("d0_low", d0_close) or d0_close)
+        midpoint = float(sig.get("d0_midpoint", 0) or 0)
+        if midpoint <= 0 and d0_high > 0 and d0_low > 0:
+            midpoint = (d0_high + d0_low) / 2.0
+        live = results.get(sig.get("code")) or {}
+        support_candidates.append({
+            "code": sig.get("code"),
+            "name": sig.get("name", ""),
+            "market": sig.get("market", ""),
+            "group": gid,
+            "group_name": sig.get("group_name", GROUP_NAMES.get(gid, gid)),
+            "market_filter_on": filter_on,
+            "stats_rank": rank_map.get((gid, filter_on)),
+            "status": status,
+            "d0_date": sig.get("d0_date"),
+            "d0_close": sig.get("d0_close"),
+            "d0_midpoint": round(midpoint, 4) if midpoint else None,
+            "d1_checked_date": sig.get("d1_checked_date"),
+            "d1_close": sig.get("d1_close"),
+            "support_date": sig.get("support_date"),
+            "support_close": sig.get("support_close"),
+            "latest_price": live.get("price"),
+            "latest_ma5": live.get("ma5"),
+            "latest_ma10": live.get("ma10"),
+        })
+    support_candidates.sort(key=lambda x: (x.get("stats_rank") or 999, x.get("d0_date") or "", x.get("code") or ""))
+
+    holdings = []
+    raw_holdings = portfolio.get("holdings") if isinstance(portfolio, dict) else []
+    if not isinstance(raw_holdings, list):
+        raw_holdings = []
+    for h in raw_holdings:
+        if not isinstance(h, dict):
+            continue
+        code = str(h.get("code", "")).strip()
+        live = results.get(code) or {}
+        holdings.append({
+            "code": code,
+            "name": h.get("name") or live.get("name", ""),
+            "lots": h.get("lots"),
+            "avg_cost": h.get("avg_cost"),
+            "latest_price": live.get("price", h.get("latest_price")),
+            "ma5": live.get("ma5", h.get("ma5")),
+            "ma10": live.get("ma10", h.get("ma10")),
+        })
+
+    leveraged = portfolio.get("leveraged") if isinstance(portfolio, dict) else {}
+    if not isinstance(leveraged, dict):
+        leveraged = {}
+    etf_market = (market_data.get("etf00631L") or {}) if isinstance(market_data, dict) else {}
+    taiex_market = (market_data.get("taiex") or {}) if isinstance(market_data, dict) else {}
+    leveraged_out = {
+        "code": leveraged.get("code", "00631L"),
+        "lots": leveraged.get("lots"),
+        "avg_cost": leveraged.get("avg_cost"),
+        "latest_price": etf_market.get("price", leveraged.get("latest_price")),
+        "peak_index": leveraged.get("peak_index"),
+        "taiex": taiex_market.get("price", leveraged.get("taiex")),
+    }
+
+    out = {
+        "schema_version": "2026-09-02.1",
+        "generated_at": generated_at,
+        "strategy_config": cfg,
+        "market_filter": market_filter,
+        "portfolio_updated_at": portfolio.get("updated_at") if isinstance(portfolio, dict) else None,
+        "capital": portfolio.get("capital") if isinstance(portfolio, dict) else None,
+        "leveraged": leveraged_out,
+        "holdings": holdings,
+        "stats_ranking": stats_rows,
+        "support_candidates": support_candidates,
+        "scanner_candidates": candidates,
+    }
+    Path("reminder.json").write_text(
+        json.dumps(out, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return out
+
 
 def main():
     cfg = load_config()
@@ -364,7 +530,11 @@ def main():
     (h / f"{day}.json").write_text(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
     signals, stats = rebuild_signals_and_stats(cfg, generated_at)
+    reminder = build_reminder_json(cfg, generated_at, results, market_filter, signals, stats)
     print("Signals:", len(signals), "Stats groups:", len(stats.get("groups", [])))
+    print("Reminder candidates:", len(reminder.get("scanner_candidates", [])),
+          "Support candidates:", len(reminder.get("support_candidates", [])),
+          "Holdings:", len(reminder.get("holdings", [])))
     print(json.dumps(meta, ensure_ascii=False, indent=2))
 
 if __name__ == "__main__":
