@@ -1,0 +1,23 @@
+{
+  "updated_at": "2026-09-02T01:02:16.287Z",
+  "capital": 2500000,
+  "leveraged": {
+    "code": "00631L",
+    "lots": 13,
+    "avg_cost": 34.68,
+    "latest_price": 37.26,
+    "peak_index": 45224,
+    "taiex": 46948.72
+  },
+  "holdings": [
+    {
+      "code": "3711",
+      "name": "日月光投控",
+      "lots": 3,
+      "avg_cost": 600,
+      "latest_price": 610,
+      "ma5": 602.4,
+      "ma10": 596
+    }
+  ]
+}
