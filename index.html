@@ -112,15 +112,10 @@
 </section>
 <section id=a class=page>
 <div class=card>
-  <div class=head><div><h2>統計分析</h2><div class=hint>以「站穩支撐當天收盤」為基準，追蹤之後最多 10 個交易日。A～F 六組再依 D0 訊號當天大盤濾網「通過 / 未通過」拆成 12 組統計。</div></div><button class=refresh onclick="loadStats()">更新</button></div>
+  <div class=head><div><h2>統計分析</h2><div class=hint>固定母條件：均線糾結 ≤5% 且股價突破站上 MA5／MA10／MA20。64 種通用組合 × 5 種情境＝320 種結果，只顯示全體平均最大漲幅最高的 5 種。</div></div><button class=refresh onclick="loadStats()">更新</button></div>
   <div id=statsMeta class=small>讀取統計資料中…</div>
-  <div class=statsScroll>
-    <table class=statsTable>
-      <thead><tr><th>條件</th><th>大盤濾網</th><th>最大漲幅</th><th>最大跌幅</th><th>累積漲跌幅</th><th>筆數</th></tr></thead>
-      <tbody id=statsBody><tr><td colspan=6>讀取中…</td></tr></tbody>
-    </table>
-  </div>
-  <div class=small style="margin-top:10px">未滿 10 日的樣本會隨每日資料更新；滿 10 個交易日後該筆結果固定。</div>
+  <div id=statsScenarioCards></div>
+  <div class=small style="margin-top:10px">每筆以該情境成立當日收盤模擬買入，觀察之後 10 個交易日。樣本可重複歸入不同研究情境；請同時參考樣本數與勝率。</div>
 </div>
 </section></div>
 <div id=detailModal class=modal onclick="if(event.target===this)closeDetail()"><div class=sheet><div class=sheettop><h2 id=detailTitle>個股詳細資料</h2><button class=close onclick=closeDetail()>關閉</button></div><div id=detailBody></div></div></div>
@@ -128,7 +123,7 @@
 const $=x=>document.getElementById(x),N=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—',M=n=>Number.isFinite(n)?'NT$ '+Math.round(n).toLocaleString('zh-TW'):'—';
 const STATE_KEY='tw26real',SYNC_KEY='tw26sync';
 const GH_OWNER='kensohap-boop',GH_REPO='tw-strategy-mobile',GH_BRANCH='main',PORTFOLIO_FILE='portfolio_state.json';
-let st={capital:2500000,buys:[],sales:[]},db={},meta={},marketLive={},statsData={},strategyConfig={compact_ma_pct:.05,min_avg_volume_lots:10000,volume_multiplier:2,support_max_gap_pct:.05,tracking_days:10};
+let st={capital:2500000,buys:[],sales:[]},db={},meta={},marketLive={},statsData={},strategyConfig={compact_ma_pct:.05,min_avg_volume_lots:10000,volume_multiplier:2,support_max_gap_pct:.05,tracking_days:12,record_through_d:13};
 let syncCfg={token:'',consent:false},syncTimer=null;
 try{const raw=localStorage.getItem(STATE_KEY);if(raw)st={...st,...JSON.parse(raw)}}catch(e){}
 try{const raw=localStorage.getItem(SYNC_KEY);if(raw)syncCfg={...syncCfg,...JSON.parse(raw)}}catch(e){}
@@ -319,32 +314,23 @@ async function loadStats(){
  }
 }
 function renderStats(){
- const raw=Array.isArray(statsData?.groups)?statsData.groups:[];
- const names={A:'① 6/6 全部符合',B:'② 5/6・僅放量未過',C:'③ 5/6・僅成交量未過',D:'④ 5/6・僅多頭未過',E:'⑤ 5/6・僅年線未過',F:'⑥ 5/6・僅均線糾結未過'};
- // 永遠補齊 A～F × 大盤通過/未通過，共 12 列。
- let rows=[];
- for(const gid of ['A','B','C','D','E','F']){
-   for(const filterOn of [true,false]){
-     const found=raw.find(x=>String(x.group||'').toUpperCase()===gid && x.market_filter_on===filterOn);
-     rows.push(found||{group:gid,name:names[gid],market_filter_on:filterOn,market_filter_label:filterOn?'通過':'未通過',avg_max_up_pct:null,avg_max_down_pct:null,avg_cumulative_pct:null,samples:0});
-   }
- }
- // 尚無任何樣本時維持 A通過、A未通過、B通過、B未通過…；開始有資料後依「平均最大漲幅」由高到低排名，無樣本排最後。
- const hasSamples=rows.some(x=>(+x.samples||0)>0 && Number.isFinite(Number(x.avg_max_up_pct)));
- if(hasSamples){
-   rows.sort((a,b)=>{
-     const av=Number(a.avg_max_up_pct),bv=Number(b.avg_max_up_pct);
-     const aa=((+a.samples||0)>0&&Number.isFinite(av))?av:-Infinity;
-     const bb=((+b.samples||0)>0&&Number.isFinite(bv))?bv:-Infinity;
-     return bb-aa;
-   });
- }
+ const rows=Array.isArray(statsData?.global_top5)?statsData.global_top5.slice(0,5):[];
  const p=v=>(v!==null&&v!==''&&Number.isFinite(Number(v)))?`${Number(v)>=0?'+':''}${Number(v).toFixed(2)}%`:'—';
- if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・以站穩支撐收盤為基準・最多追蹤 ${statsData.window_trading_days||10} 個交易日・12 組依最大漲幅排名・條件版 ${statsData?.config?.version||'—'}`;
- if(!$('statsBody'))return;
- $('statsBody').innerHTML=rows.map((x,i)=>`<tr><td><b>${i+1}. ${x.name||names[x.group]||x.group||'—'}</b></td><td><b>${x.market_filter_on===true?'✅ 通過':'❌ 未通過'}</b></td><td class="${Number(x.avg_max_up_pct)>=0?'pos':'neg'}">${p(x.avg_max_up_pct)}</td><td class="${Number(x.avg_max_down_pct)<0?'neg':'pos'}">${p(x.avg_max_down_pct)}</td><td class="${Number(x.avg_cumulative_pct)>=0?'pos':'neg'}">${p(x.avg_cumulative_pct)}</td><td class=countCell>${x.samples||0}</td></tr>`).join('');
+ const comboText=row=>(Array.isArray(row?.combo)?row.combo:[]).map(x=>`${x.value?'✓':'×'}${x.name}`).join('・');
+ if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・64 組合 × 5 情境＝320 種結果・只顯示全體 TOP 5・依平均最大漲幅排序・條件版 ${statsData?.config?.version||'—'}`;
+ const box=$('statsScenarioCards');if(!box)return;
+ const body=rows.length?rows.map((x,i)=>`<tr>
+   <td><b>${i+1}</b></td><td><b>${x.scenario_name||x.scenario||'—'}</b></td>
+   <td style="min-width:250px">${comboText(x)}</td>
+   <td class="${Number(x.avg_max_up_pct)>=0?'pos':'neg'}">${p(x.avg_max_up_pct)}</td>
+   <td class="${Number(x.avg_max_down_pct)<0?'neg':'pos'}">${p(x.avg_max_down_pct)}</td>
+   <td class="${Number(x.avg_final_pct)>=0?'pos':'neg'}">${p(x.avg_final_pct)}</td>
+   <td><b>${p(x.win_rate_pct)}</b></td><td>${x.samples||0}${(+x.samples||0)<20?' ⚠️':''}</td>
+ </tr>`).join(''):`<tr><td colspan=8>目前尚無足夠樣本</td></tr>`;
+ box.innerHTML=`<div style="margin-top:18px"><h3>320 種結果｜全體 TOP 5</h3><div class=statsScroll><table class=statsTable>
+ <thead><tr><th>排名</th><th>情境</th><th>6變數組合</th><th>平均最大漲幅</th><th>平均最大跌幅</th><th>10日平均漲跌幅</th><th>勝率</th><th>樣本</th></tr></thead>
+ <tbody>${body}</tbody></table></div></div>`;
 }
-
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('on'));t.classList.add('on');$(t.dataset.p).classList.add('on')});
 if($('ghToken'))$('ghToken').value=syncCfg.token||'';if($('syncConsent'))$('syncConsent').checked=!!syncCfg.consent;if(syncCfg.token&&syncCfg.consent)syncStatus('提醒同步已啟用；持倉異動會自動同步。',true);
 $('capital').value=st.capital;$('capital').oninput=e=>{st.capital=+e.target.value;save();render()};
