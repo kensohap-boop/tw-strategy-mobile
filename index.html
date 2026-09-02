@@ -112,12 +112,12 @@
 </section>
 <section id=a class=page>
 <div class=card>
-  <div class=head><div><h2>統計分析</h2><div class=hint>以「站穩支撐當天收盤」為基準，追蹤之後最多 10 個交易日。同條件多筆資料取平均，依平均最大漲幅由高到低排序。</div></div><button class=refresh onclick="loadStats()">更新</button></div>
+  <div class=head><div><h2>統計分析</h2><div class=hint>以「站穩支撐當天收盤」為基準，追蹤之後最多 10 個交易日。A～F 六組再依 D0 訊號當天大盤濾網「通過 / 未通過」拆成 12 組統計。</div></div><button class=refresh onclick="loadStats()">更新</button></div>
   <div id=statsMeta class=small>讀取統計資料中…</div>
   <div class=statsScroll>
     <table class=statsTable>
-      <thead><tr><th>條件</th><th>最大漲幅</th><th>最大跌幅</th><th>累積漲跌幅</th><th>筆數</th></tr></thead>
-      <tbody id=statsBody><tr><td colspan=5>讀取中…</td></tr></tbody>
+      <thead><tr><th>條件</th><th>大盤濾網</th><th>最大漲幅</th><th>最大跌幅</th><th>累積漲跌幅</th><th>筆數</th></tr></thead>
+      <tbody id=statsBody><tr><td colspan=6>讀取中…</td></tr></tbody>
     </table>
   </div>
   <div class=small style="margin-top:10px">未滿 10 日的樣本會隨每日資料更新；滿 10 個交易日後該筆結果固定。</div>
@@ -259,7 +259,7 @@ async function loadStats(){
  }catch(e){
    statsData={groups:[]};
    if($('statsMeta'))$('statsMeta').textContent='統計資料尚未建立，先完成每日掃描後會自動出現。';
-   if($('statsBody'))$('statsBody').innerHTML='<tr><td colspan="5">目前尚無可統計樣本</td></tr>';
+   if($('statsBody'))$('statsBody').innerHTML='<tr><td colspan="6">目前尚無可統計樣本</td></tr>';
  }
 }
 function renderStats(){
@@ -268,8 +268,8 @@ function renderStats(){
  const p=v=>Number.isFinite(+v)?`${+v>=0?'+':''}${(+v).toFixed(2)}%`:'—';
  if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・以站穩支撐收盤為基準・最多追蹤 ${statsData.window_trading_days||10} 個交易日・條件版 ${statsData?.config?.version||'—'}`;
  if(!$('statsBody'))return;
- if(!rows.length){$('statsBody').innerHTML='<tr><td colspan="5">目前尚無站穩支撐樣本</td></tr>';return}
- $('statsBody').innerHTML=rows.map((x,i)=>`<tr><td><b>${i+1}. ${x.name||x.group||'—'}</b></td><td class="${(+x.avg_max_up_pct||0)>=0?'pos':'neg'}">${p(x.avg_max_up_pct)}</td><td class="${(+x.avg_max_down_pct||0)<0?'neg':'pos'}">${p(x.avg_max_down_pct)}</td><td class="${(+x.avg_cumulative_pct||0)>=0?'pos':'neg'}">${p(x.avg_cumulative_pct)}</td><td class=countCell>${x.samples||0}</td></tr>`).join('');
+ if(!rows.length){$('statsBody').innerHTML='<tr><td colspan="6">目前尚無站穩支撐樣本</td></tr>';return}
+ $('statsBody').innerHTML=rows.map((x,i)=>`<tr><td><b>${i+1}. ${x.name||x.group||'—'}</b></td><td><b>${x.market_filter_label||(x.market_filter_on===true?'通過':x.market_filter_on===false?'未通過':'—')}</b></td><td class="${(+x.avg_max_up_pct||0)>=0?'pos':'neg'}">${p(x.avg_max_up_pct)}</td><td class="${(+x.avg_max_down_pct||0)<0?'neg':'pos'}">${p(x.avg_max_down_pct)}</td><td class="${(+x.avg_cumulative_pct||0)>=0?'pos':'neg'}">${p(x.avg_cumulative_pct)}</td><td class=countCell>${x.samples||0}</td></tr>`).join('');
 }
 
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('on'));t.classList.add('on');$(t.dataset.p).classList.add('on')});
