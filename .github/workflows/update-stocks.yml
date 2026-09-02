@@ -13,20 +13,26 @@ jobs:
   update:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+
       - name: Scan market, save daily snapshot, rebuild statistics and reminder
         run: python update_stocks.py
+
       - name: Commit scanner, statistics and reminder data
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
           git add stocks.json stocks_meta.json history/ signals_history.json stats_summary.json reminder.json
+
           if git diff --cached --quiet; then
             echo "No change"
           else
@@ -34,3 +40,47 @@ jobs:
             git pull --rebase origin main
             git push origin main
           fi
+
+      - name: Email reminder data to Gmail
+        env:
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          if [ -z "$GMAIL_USERNAME" ] || [ -z "$GMAIL_APP_PASSWORD" ]; then
+            echo "Gmail secrets are not configured; skip email."
+            exit 0
+          fi
+
+          python - <<'PY'
+          import json
+          import os
+          import smtplib
+          from email.message import EmailMessage
+          from pathlib import Path
+
+          username = os.environ["GMAIL_USERNAME"]
+          app_password = os.environ["GMAIL_APP_PASSWORD"]
+
+          path = Path("reminder.json")
+          if not path.exists():
+              raise FileNotFoundError("reminder.json not found")
+
+          data = json.loads(path.read_text(encoding="utf-8"))
+          generated_at = data.get("generated_at", "unknown")
+
+          msg = EmailMessage()
+          msg["Subject"] = "TW Strategy Reminder Data"
+          msg["From"] = username
+          msg["To"] = username
+          msg.set_content(
+              "TW Strategy reminder data\n"
+              f"generated_at: {generated_at}\n\n"
+              + json.dumps(data, ensure_ascii=False, indent=2)
+          )
+
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+              smtp.login(username, app_password)
+              smtp.send_message(msg)
+
+          print("Reminder email sent successfully.")
+          PY
