@@ -11,7 +11,7 @@ TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"}
 DEFAULT_CONFIG = {
-    "version": "2026-09-02.3",
+    "version": "2026-09-02.4",
     "compact_ma_pct": 0.05,
     "min_avg_volume_lots": 10000,
     "volume_multiplier": 2.0,
@@ -429,7 +429,8 @@ def rebuild_signals_and_stats(cfg, generated_at):
                     "avg_final_pct": round(av("final_pct"), 4),
                     "cumulative_pct": round(sum(x["final_pct"] for x in arr), 4),
                     "median_final_pct": round(med, 4),
-                    "win_rate_pct": round(sum(1 for x in arr if x["final_pct"] > 0) / len(arr) * 100, 2),
+                    "win_rate_pct": round(sum(1 for x in arr if x["max_up_pct"] >= 20) / len(arr) * 100, 2),
+                    "win_definition": "買入後10個交易日內最高漲幅曾達20%",
                     "samples": len(arr), "complete_samples": sum(1 for x in arr if x["complete"]),
                 }
             else:
@@ -438,6 +439,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
                     "combo": [{"name": labels[j], "value": bits[j]} for j in range(6)],
                     "avg_max_up_pct": None, "avg_max_down_pct": None, "avg_final_pct": None,
                     "cumulative_pct": None, "median_final_pct": None, "win_rate_pct": None,
+                    "win_definition": "買入後10個交易日內最高漲幅曾達20%",
                     "samples": 0, "complete_samples": 0,
                 }
             combo_rows.append(row)
@@ -457,6 +459,13 @@ def rebuild_signals_and_stats(cfg, generated_at):
         "generated_at": generated_at,
         "basis": "scenario_entry_close",
         "outcome_window_trading_days": 10,
+        "win_definition": "買入後10個交易日內最高漲幅曾達20%",
+        "exit_rules": {
+            "profit_take": "持股報酬達+20%賣出一半",
+            "ma5": "收盤跌破MA5賣出一半",
+            "ma10": "收盤跌破MA10全部賣出",
+            "time_stop": "買入後滿10個交易日仍未曾達+20%，全部出清"
+        },
         "raw_signal_path": f"D0-D{record_through_d}",
         "mother_filter": "MA5/MA10/MA20與股價糾結<=5%，且股價突破站上MA5/MA10/MA20",
         "scenario_names": scenario_names,
@@ -620,7 +629,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
     }
 
     out = {
-        "schema_version": "2026-09-02.3",
+        "schema_version": "2026-09-02.4",
         "generated_at": generated_at,
         "strategy_config": cfg,
         "market_filter": market_filter,

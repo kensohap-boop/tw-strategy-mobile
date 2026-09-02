@@ -115,7 +115,7 @@
   <div class=head><div><h2>統計分析</h2><div class=hint>固定母條件：均線糾結 ≤5% 且股價突破站上 MA5／MA10／MA20。64 種通用組合 × 5 種情境＝320 種結果，只顯示全體平均最大漲幅最高的 5 種。</div></div><button class=refresh onclick="loadStats()">更新</button></div>
   <div id=statsMeta class=small>讀取統計資料中…</div>
   <div id=statsScenarioCards></div>
-  <div class=small style="margin-top:10px">每筆以該情境成立當日收盤模擬買入，觀察之後 10 個交易日。樣本可重複歸入不同研究情境；請同時參考樣本數與勝率。</div>
+  <div class=small style="margin-top:10px">每筆以該情境成立當日收盤模擬買入，觀察之後 10 個交易日。勝率定義：期間最高漲幅曾達 +20% 才算勝；樣本可重複歸入不同研究情境，請同時參考樣本數與風險。</div>
 </div>
 </section></div>
 <div id=detailModal class=modal onclick="if(event.target===this)closeDetail()"><div class=sheet><div class=sheettop><h2 id=detailTitle>個股詳細資料</h2><button class=close onclick=closeDetail()>關閉</button></div><div id=detailBody></div></div></div>
@@ -317,7 +317,7 @@ function renderStats(){
  const rows=Array.isArray(statsData?.global_top5)?statsData.global_top5.slice(0,5):[];
  const p=v=>(v!==null&&v!==''&&Number.isFinite(Number(v)))?`${Number(v)>=0?'+':''}${Number(v).toFixed(2)}%`:'—';
  const comboText=row=>(Array.isArray(row?.combo)?row.combo:[]).map(x=>`${x.value?'✓':'×'}${x.name}`).join('・');
- if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・64 組合 × 5 情境＝320 種結果・只顯示全體 TOP 5・依平均最大漲幅排序・條件版 ${statsData?.config?.version||'—'}`;
+ if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・64 組合 × 5 情境＝320 種結果・只顯示全體 TOP 5・依平均最大漲幅排序・勝率=10日內曾達+20%・條件版 ${statsData?.config?.version||'—'}`;
  const box=$('statsScenarioCards');if(!box)return;
  const body=rows.length?rows.map((x,i)=>`<tr>
    <td><b>${i+1}</b></td><td><b>${x.scenario_name||x.scenario||'—'}</b></td>
