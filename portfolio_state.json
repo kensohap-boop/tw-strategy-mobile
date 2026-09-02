@@ -1,5 +1,5 @@
 {
-  "updated_at": "2026-09-02T01:13:10.754Z",
+  "updated_at": "2026-09-02T03:18:18.163Z",
   "capital": 2500000,
   "leveraged": {
     "code": "00631L",
@@ -15,9 +15,9 @@
       "name": "日月光投控",
       "lots": 3,
       "avg_cost": 600,
-      "latest_price": 610,
-      "ma5": 602.4,
-      "ma10": 596
+      "latest_price": 590,
+      "ma5": 602,
+      "ma10": 596.2
     }
   ]
 }
