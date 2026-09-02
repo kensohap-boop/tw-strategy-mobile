@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Run 10-year exploratory backtest
-        run: python backtest_10y.py --years "${{ github.event.inputs.years || '10' }}" --workers 12 --out backtest_10y.json
+        run: python backtest_10y_research.py --years "${{ github.event.inputs.years || '10' }}" --workers 12 --out backtest_10y.json
       - name: Commit result
         run: |
           git config user.name "github-actions[bot]"
