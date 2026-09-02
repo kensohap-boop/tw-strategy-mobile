@@ -11,7 +11,7 @@ TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"}
 DEFAULT_CONFIG = {
-    "version": "2026-09-02.9",
+    "version": "2026-09-02.10",
     "compact_ma_pct": 0.03,
     "min_avg_volume_lots": 10000,
     "volume_multiplier": 2.0,
@@ -404,6 +404,23 @@ def rebuild_signals_and_stats(cfg, generated_at):
                 exits.append({"day":day_no,"rule":"第10日剩餘全出","fraction":qty,"price":close})
                 remain = 0
 
+        # Research only: after first close below MA5/MA10/MA20, did price later reach entry +20% within the 10-day window?
+        recovery = {}
+        for ma_key in ("ma5", "ma10", "ma20"):
+            break_idx = None
+            for j, x in enumerate(future[:10]):
+                close_j = float(x.get("close", entry_price) or entry_price)
+                ma_j = float(x.get(ma_key, 0) or 0)
+                if ma_j > 0 and close_j < ma_j:
+                    break_idx = j
+                    break
+            if break_idx is None:
+                recovery[ma_key] = {"broke": False, "reached_20_after_break": None}
+            else:
+                later = future[break_idx + 1:10]
+                reached = any(float(y.get("high", y.get("close", 0)) or 0) >= entry_price * 1.20 for y in later)
+                recovery[ma_key] = {"broke": True, "break_day": break_idx + 1, "reached_20_after_break": reached}
+
         strategy_complete = remain == 0
         return {
             "max_up_pct": (max(highs) / entry_price - 1) * 100,
@@ -415,6 +432,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
             "strategy_complete": strategy_complete,
             "strategy_hit20": hit20,
             "strategy_exits": exits,
+            "post_ma_break_recovery": recovery,
         }
 
     samples = {(sid, cid): [] for sid in scenario_names for cid in [f"{n:06b}" for n in range(64)]}
@@ -476,6 +494,11 @@ def rebuild_signals_and_stats(cfg, generated_at):
                 finals = sorted(x["final_pct"] for x in arr)
                 med = finals[len(finals)//2] if len(finals)%2 else (finals[len(finals)//2-1]+finals[len(finals)//2])/2
                 sr = [x["strategy_return_pct"] for x in arr if x.get("strategy_return_pct") is not None]
+                recovery_stats = {}
+                for ma_key in ("ma5", "ma10", "ma20"):
+                    broke = [x for x in arr if x.get("post_ma_break_recovery",{}).get(ma_key,{}).get("broke")]
+                    recovered = [x for x in broke if x.get("post_ma_break_recovery",{}).get(ma_key,{}).get("reached_20_after_break")]
+                    recovery_stats[ma_key] = {"break_samples":len(broke), "recovered_20_samples":len(recovered), "recovery_to_20_pct":round(len(recovered)/len(broke)*100,2) if broke else None}
                 row = {
                     "scenario": sid, "scenario_name": sname, "combo_id": cid,
                     "combo": [{"name": labels[j], "value": bits[j]} for j in range(6)],
@@ -494,6 +517,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
                     "strategy_best_trade_pct": round(max(sr),4) if sr else None,
                     "strategy_worst_trade_pct": round(min(sr),4) if sr else None,
                     "strategy_complete_samples": len(sr),
+                    "post_ma_break_recovery": recovery_stats,
                     "samples": len(arr), "complete_samples": sum(1 for x in arr if x["complete"]),
                 }
             else:
@@ -741,7 +765,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
     }
 
     out = {
-        "schema_version": "2026-09-02.9",
+        "schema_version": "2026-09-02.10",
         "generated_at": generated_at,
         "strategy_config": cfg,
         "market_filter": market_filter,
