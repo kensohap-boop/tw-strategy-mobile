@@ -47,36 +47,11 @@
       <h2>市場行情</h2>
       <div class=hint id=lUpdated>讀取目前資料</div>
     </div>
-    <button onclick="refreshLeveragedMarket()">更新行情</button>
   </div>
   <div class=grid>
     <div class=metric>加權指數<b id=lMarketIndex>—</b></div>
     <div class=metric>00631L<b id=lMarketPrice>—</b></div>
   </div>
-</div>
-
-<div class=card>
-  <h2>本輪高點</h2>
-  <div class=hint>加權指數本輪高點</div>
-  <input id=lPeak type=number inputmode=decimal placeholder="輸入本輪高點">
-  <button onclick="saveLeveragedPeak()">儲存本輪高點</button>
-  <div class=small style="margin-top:8px">加碼觸發只依「加權指數」判斷，不用正2價格反推。</div>
-</div>
-
-<div class=card>
-  <h2>加碼階梯</h2>
-  <div id=lLadder></div>
-  <div id=lSignal class=empty style="margin-top:14px">更新行情並輸入本輪高點後，自動判斷目前階段。</div>
-</div>
-
-<div class=card>
-  <h2>我的正2持倉</h2>
-  <div class=grid>
-    <label>買入價<input id=lBuyPrice type=number inputmode=decimal placeholder="買入價"></label>
-    <label>張數<input id=lBuyLots type=number inputmode=decimal placeholder="張數"></label>
-  </div>
-  <button onclick="addLeveragedBuy()">＋新增買入</button>
-  <div id=lBuys class=empty style="margin-top:14px">尚未新增買入紀錄。</div>
 </div>
 
 <div class=card>
@@ -94,6 +69,24 @@
 </div>
 
 <div class=card>
+  <h2>我的正2持倉</h2>
+  <div class=grid>
+    <label>買入價<input id=lBuyPrice type=number inputmode=decimal placeholder="買入價"></label>
+    <label>張數<input id=lBuyLots type=number inputmode=decimal placeholder="張數"></label>
+  </div>
+  <button onclick="addLeveragedBuy()">＋新增買入</button>
+  <div id=lBuys class=empty style="margin-top:14px">尚未新增買入紀錄。</div>
+</div>
+
+<div class=card>
+  <h2>本輪高點</h2>
+  <div class=hint>加權指數本輪高點</div>
+  <input id=lPeak type=number inputmode=decimal placeholder="輸入本輪高點">
+  <button onclick="saveLeveragedPeak()">儲存本輪高點</button>
+  <div class=small style="margin-top:8px">加碼觸發只依「加權指數」判斷，不用正2價格反推。</div>
+</div>
+
+<div class=card>
   <h2>+30% 再平衡</h2>
   <div class=grid>
     <div class=metric>再平衡價格<b id=lRebPrice>—</b></div>
@@ -102,6 +95,12 @@
     <div class=metric>預估賣出張數<b id=lSellLots>—</b></div>
   </div>
   <div id=lRebalance class=empty style="margin-top:14px">整體正2持倉相對加權成本 +30% 時，再平衡回當下總資產 30%。</div>
+</div>
+
+<div class=card>
+  <h2>加碼階梯</h2>
+  <div id=lLadder></div>
+  <div id=lSignal class=empty style="margin-top:14px">更新行情並輸入本輪高點後，自動判斷目前階段。</div>
 </div>
 
 </section>
@@ -423,4 +422,6 @@ set('fStockCost',stockCost?M(stockCost):'—');set('fStockValue',stockValue?M(st
 $('holds').innerHTML=codes.map(c=>{let i=I(c),p=P(c),a=avg(c),r=rem(c),ret=Number.isFinite(p)&&Number.isFinite(a)&&a>0?(p/a-1)*100:NaN,z=status(c),sales=st.sales.filter(x=>x.c==c),cost=Number.isFinite(a)?a*r*1000:NaN,mv=Number.isFinite(p)?p*r*1000:NaN,pnl=Number.isFinite(cost)&&Number.isFinite(mv)?mv-cost:NaN,alloc=cap>0&&Number.isFinite(mv)?mv/cap*100:NaN;return`<div class=item><div class=head><div><div class=nm>${c} ${i.name||''}</div><div class=m>剩 ${N(r)}張・成本 $${N(a)}・最新 ${Number.isFinite(p)?'$'+N(p):'等待掃描資料'}</div></div><span class="badge ${z[1]}">${z[0]}</span></div><div class=stats><div class=mini>目前市值<b>${Number.isFinite(mv)?M(mv):'—'}</b></div><div class=mini>未實現損益<b>${Number.isFinite(pnl)?`${pnl>=0?'+':''}${M(pnl)}`:'—'}</b></div><div class=mini>未實現報酬<b>${Number.isFinite(ret)?`${ret>=0?'+':''}${ret.toFixed(2)}%`:'—'}</b></div><div class=mini>資金占比<b>${Number.isFinite(alloc)?alloc.toFixed(1)+'%':'—'}</b></div><div class=mini>出場判斷<b>${z[2]}</b></div><div class=mini>MA5<b>${N(+i.ma5)}</b></div><div class=mini>MA10<b>${N(+i.ma10)}</b></div><div class=mini>資料日<b>${i.date||meta.generated_at||'—'}</b></div></div><div class=actions><button onclick="sell('${c}')">＋實際賣出</button></div>${sales.map(x=>`<div class=sale>${x.d}　賣出 $${N(x.p)} × ${N(x.l)}張</div>`).join('')}</div>`}).join('')||'<p class=m>尚未新增實際持股。</p>';
 renderScanner()}
 load();render();renderLeveraged();loadStats();setTimeout(refreshLeveragedMarket,100);setTimeout(schedulePortfolioSync,5000);
+window.addEventListener('pageshow',()=>setTimeout(refreshLeveragedMarket,100));
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')setTimeout(refreshLeveragedMarket,100)});
 </script></body></html>
