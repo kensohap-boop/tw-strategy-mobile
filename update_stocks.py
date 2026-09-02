@@ -11,8 +11,8 @@ TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"}
 DEFAULT_CONFIG = {
-    "version": "2026-09-02.5",
-    "compact_ma_pct": 0.05,
+    "version": "2026-09-02.7",
+    "compact_ma_pct": 0.03,
     "min_avg_volume_lots": 10000,
     "volume_multiplier": 2.0,
     "support_max_gap_pct": 0.05,
@@ -52,7 +52,7 @@ def load_config():
     raw = load_json("strategy_config.json", {})
     if isinstance(raw, dict):
         cfg.update(raw)
-    cfg["compact_ma_pct"] = float(cfg.get("compact_ma_pct", 0.05))
+    cfg["compact_ma_pct"] = 0.03  # 固定：只計算 MA5/MA10/MA20 三條均線的 3% 糾結
     cfg["min_avg_volume_lots"] = float(cfg.get("min_avg_volume_lots", 10000))
     cfg["volume_multiplier"] = float(cfg.get("volume_multiplier", 2.0))
     cfg["support_max_gap_pct"] = float(cfg.get("support_max_gap_pct", 0.05))
@@ -121,8 +121,9 @@ def evaluate_conditions(rec, cfg):
         v20 = float(rec.get("volume20_avg_lots"))
     except Exception:
         return [False] * 6
-    vals = [p, m5, m10, m20]
-    compact = min(vals) > 0 and ((max(vals) - min(vals)) / min(vals)) <= cfg["compact_ma_pct"]
+    ma_vals = [m5, m10, m20]
+    # 均線糾結只看 MA5 / MA10 / MA20 彼此距離；突破後股價可高於糾結區，不受 3% 限制。
+    compact = min(ma_vals) > 0 and ((max(ma_vals) - min(ma_vals)) / min(ma_vals)) <= cfg["compact_ma_pct"]
     above240 = p > m240
     bullish = m5 > m10 > m20
     liquid = v20 > cfg["min_avg_volume_lots"]
@@ -462,7 +463,9 @@ def rebuild_signals_and_stats(cfg, generated_at):
         rank_lookup[(row["scenario"], row["combo_id"])] = rank
         row["rank"] = rank
     global_top5 = ranked_all[:5]
-    top5_keys = {f"{x['scenario']}:{x['combo_id']}" for x in global_top5}
+    # A recommendation is valid only after the new statistics have at least one real sample.
+    # Zero-sample / stale legacy data can never become a buy recommendation.
+    top5_keys = {f"{x['scenario']}:{x['combo_id']}" for x in global_top5 if int(x.get("samples", 0) or 0) > 0}
 
     summary = {
         "generated_at": generated_at,
@@ -476,7 +479,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
             "time_stop": "買入後滿10個交易日仍未曾達+20%，全部出清"
         },
         "raw_signal_path": f"D0-D{record_through_d}",
-        "mother_filter": "MA5/MA10/MA20與股價糾結<=5%，股價突破站上MA5/MA10/MA20，且D0當日必須上漲",
+        "mother_filter": "MA5/MA10/MA20三條均線彼此糾結<=3%；D0股價突破站上三條均線且當日必須上漲；突破後股價不受3%區間限制",
         "scenario_names": scenario_names,
         "config": cfg,
         "combination_stats": combo_rows,
@@ -587,6 +590,8 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
         if scenario_key not in top5_keys:
             continue
         matched_stat = next((r for r in stats_rows if r.get("scenario") == scenario and r.get("combo_id") == cid), {})
+        if int(matched_stat.get("samples", 0) or 0) <= 0:
+            continue
         support_candidates.append({
             "code": sig.get("code"),
             "name": sig.get("name", ""),
@@ -652,7 +657,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
     }
 
     out = {
-        "schema_version": "2026-09-02.5",
+        "schema_version": "2026-09-02.7",
         "generated_at": generated_at,
         "strategy_config": cfg,
         "market_filter": market_filter,

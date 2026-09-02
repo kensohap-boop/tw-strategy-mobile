@@ -108,11 +108,11 @@
 <div class=card><h2>大盤濾網</h2><div class=hint>先判斷今天是否適合查看個股進場訊號。</div><div id=marketFilterBox class=empty>讀取大盤資料中…</div></div>
 <div class=card><h2>已買入個股</h2><div class=hint>系統判斷出場訊號；只有你輸入實際賣出後才扣除持股。</div>
 <div class=grid><input id=bc placeholder="股票代號"><input id=bp type=number step=.01 placeholder="買入價"><input id=bl type=number step=.001 placeholder="張數"><button onclick=buy()>＋新增買入</button></div><div id=holds></div></div>
-<div class=card><h2>今日推薦個股</h2><div class=hint>與下午 1:00 通知使用同一份推薦清單。只顯示符合全體 TOP 5 統計結果的標的，最多 10 檔；突破當日必須是上漲日。</div><div class=scanbar><div><b id=scanStatus>載入今日推薦中…</b><div class=small id=scanMeta>—</div></div><button class=refresh onclick=load()>重新整理</button></div><div id=watchs></div></div>
+<div class=card><h2>今日推薦個股</h2><div class=hint>與下午 1:00 通知使用同一份推薦清單。只顯示符合全體 TOP 5 統計結果的標的，最多 10 檔；MA5／MA10／MA20 必須彼此糾結 ≤3%，D0 必須是上漲突破日，突破後股價不受 3% 限制。</div><div class=scanbar><div><b id=scanStatus>載入今日推薦中…</b><div class=small id=scanMeta>—</div></div><button class=refresh onclick=load()>重新整理</button></div><div id=watchs></div></div>
 </section>
 <section id=a class=page>
 <div class=card>
-  <div class=head><div><h2>統計分析</h2><div class=hint>固定母條件：均線糾結 ≤5% 且股價突破站上 MA5／MA10／MA20。64 種通用組合 × 5 種情境＝320 種結果，只顯示全體平均最大漲幅最高的 5 種。</div></div><button class=refresh onclick="loadStats()">更新</button></div>
+  <div class=head><div><h2>統計分析</h2><div class=hint>固定母條件：MA5／MA10／MA20 三條均線彼此糾結 ≤3%，D0 股價向上突破並站上三條均線；突破後股價不受 3% 糾結區限制。64 種通用組合 × 5 種情境＝320 種結果，只顯示全體平均最大漲幅最高的 5 種。</div></div><button class=refresh onclick="loadStats()">更新</button></div>
   <div id=statsMeta class=small>讀取統計資料中…</div>
   <div id=statsScenarioCards></div>
   <div class=small style="margin-top:10px">每筆以該情境成立當日收盤模擬買入，觀察之後 10 個交易日。勝率定義：期間最高漲幅曾達 +20% 才算勝；樣本可重複歸入不同研究情境，請同時參考樣本數與風險。</div>
@@ -350,7 +350,8 @@ async function load(){
   ]);
   db=d||{};meta=m||{};marketLive=mk||{};reminderData=rem||{};
   strategyConfig={...strategyConfig,...(meta.strategy_config||{}),...(cfg||{})};
-  const arr=Array.isArray(reminderData.support_candidates)?reminderData.support_candidates.slice(0,10):[];
+  const raw=Array.isArray(reminderData.support_candidates)?reminderData.support_candidates:[];
+  const arr=raw.filter(x=>Number(x.samples||0)>0 && x.scenario && Number(x.stats_rank||0)>0).slice(0,10);
   $('scanStatus').textContent=`今日推薦 ${arr.length} 檔`;
   $('scanMeta').textContent=`與 13:00 通知同源${reminderData.generated_at?'・更新 '+reminderData.generated_at:''}・只取全體 TOP 5 統計結果`;
  }catch(e){
@@ -381,7 +382,7 @@ function score(i){return conds(i).filter(Boolean).length}
 function openDetail(c){
  let i=I(c),p=+i.price,cs=conds(i),v=+i.volume_lots,v20=+i.volume20_avg_lots,ma240=+i.ma240;
  let checks=[
- ['均線：現價、MA5、MA10、MA20 差異 ≤5%',cs[0]],
+ ['均線糾結：MA5、MA10、MA20 彼此差異 ≤3%',cs[0]],
  ['年線：股價在年線之上',cs[1]],
  ['多頭：MA5 > MA10 > MA20',cs[2]],
  ['成交量：20日平均量 > '+N(+strategyConfig.min_avg_volume_lots)+'張',cs[3]],
@@ -424,14 +425,15 @@ const GROUPS=[
 {id:'C',name:'③ 5/6・僅成交量未過',desc:'只有「20日均量」門檻未過',test:c=>c[0]&&c[1]&&c[2]&&!c[3]&&c[4]&&c[5]},
 {id:'D',name:'④ 5/6・僅多頭未過',desc:'只有 MA5 > MA10 > MA20 未過',test:c=>c[0]&&c[1]&&!c[2]&&c[3]&&c[4]&&c[5]},
 {id:'E',name:'⑤ 5/6・僅年線未過',desc:'只有股價未站上 MA240',test:c=>c[0]&&!c[1]&&c[2]&&c[3]&&c[4]&&c[5]},
-{id:'F',name:'⑥ 5/6・僅均線糾結未過',desc:'只有現價/MA5/10/20 未落在 5% 內',test:c=>!c[0]&&c[1]&&c[2]&&c[3]&&c[4]&&c[5]}
+{id:'F',name:'⑥ 5/6・僅均線糾結未過',desc:'只有 MA5/10/20 三條均線未落在 3% 糾結範圍內',test:c=>!c[0]&&c[1]&&c[2]&&c[3]&&c[4]&&c[5]}
 ];
 function scannerGroups(){const groups=Object.fromEntries(GROUPS.map(g=>[g.id,[]]));Object.entries(db).forEach(([c,i])=>{const cs=conds(i),g=GROUPS.find(x=>x.test(cs));if(g)groups[g.id].push([c,i,cs])});GROUPS.forEach(g=>groups[g.id].sort((a,b)=>(+b[1].volume20_avg_lots||0)-(+a[1].volume20_avg_lots||0)));return groups}
 function renderScanner(){
- const arr=Array.isArray(reminderData?.support_candidates)?reminderData.support_candidates.slice(0,10):[];
+ const raw=Array.isArray(reminderData?.support_candidates)?reminderData.support_candidates:[];
+ const arr=raw.filter(x=>Number(x.samples||0)>0 && x.scenario && Number(x.stats_rank||0)>0).slice(0,10);
  const p=v=>(v!==null&&v!==''&&Number.isFinite(Number(v)))?`${Number(v)>=0?'+':''}${Number(v).toFixed(2)}%`:'—';
  if(!arr.length){
-   $('watchs').innerHTML='<div class=empty>目前沒有符合全體 TOP 5 統計結果的今日推薦標的。若 12:50 掃描尚未完成，請稍後重新整理。</div>';
+   $('watchs').innerHTML='<div class=empty>目前沒有有效的今日推薦標的。只有「新版統計已有實際樣本＋符合全體 TOP 5＋當下情境完整成立」才會列入；樣本 0 或舊資料一律不推薦。</div>';
    return;
  }
  $('watchs').innerHTML=arr.map((x,i)=>{
