@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-02 08:15:49",
+  "generated_at": "2026-09-02 09:50:46",
   "universe": 1981,
   "ok": 1969,
   "errors": 12,
@@ -10,14 +10,14 @@
       "error": "insufficient history: 166"
     },
     {
-      "code": "7689",
-      "market": "TW",
-      "error": "insufficient history: 220"
-    },
-    {
       "code": "7711",
       "market": "TW",
-      "error": "insufficient history: 190"
+      "error": "insufficient history: 191"
+    },
+    {
+      "code": "7689",
+      "market": "TW",
+      "error": "insufficient history: 221"
     },
     {
       "code": "7791",
@@ -27,37 +27,37 @@
     {
       "code": "7799",
       "market": "TW",
-      "error": "insufficient history: 234"
+      "error": "insufficient history: 235"
     },
     {
       "code": "7803",
       "market": "TW",
-      "error": "insufficient history: 74"
+      "error": "insufficient history: 75"
     },
     {
       "code": "7823",
       "market": "TW",
-      "error": "insufficient history: 137"
+      "error": "insufficient history: 138"
     },
     {
       "code": "7835",
       "market": "TW",
-      "error": "insufficient history: 28"
+      "error": "insufficient history: 29"
     },
     {
       "code": "7855",
       "market": "TW",
-      "error": "insufficient history: 221"
+      "error": "insufficient history: 222"
     },
     {
       "code": "6907",
       "market": "TWO",
-      "error": "insufficient history: 141"
+      "error": "insufficient history: 142"
     },
     {
       "code": "7717",
       "market": "TWO",
-      "error": "insufficient history: 193"
+      "error": "insufficient history: 194"
     },
     {
       "code": "7794",
@@ -66,11 +66,11 @@
     }
   ],
   "market_filter": {
-    "price": 46128.4688,
-    "ma5": 45573.618,
-    "ma10": 45391.1418,
-    "ma20": 45064.6371,
-    "ma240": 35041.9906,
+    "price": 46539.3516,
+    "ma5": 46284.8758,
+    "ma10": 45623.3539,
+    "ma20": 45401.6871,
+    "ma240": 35231.0364,
     "bullish_ma": true,
     "above_ma240": true,
     "filter_on": true
