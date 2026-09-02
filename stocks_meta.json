@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-02 09:50:46",
+  "generated_at": "2026-09-02 10:25:16",
   "universe": 1981,
   "ok": 1969,
   "errors": 12,
@@ -7,12 +7,7 @@
     {
       "code": "6921",
       "market": "TW",
-      "error": "insufficient history: 166"
-    },
-    {
-      "code": "7711",
-      "market": "TW",
-      "error": "insufficient history: 191"
+      "error": "insufficient history: 167"
     },
     {
       "code": "7689",
@@ -20,19 +15,24 @@
       "error": "insufficient history: 221"
     },
     {
-      "code": "7791",
+      "code": "7711",
       "market": "TW",
-      "error": "insufficient history: 207"
+      "error": "insufficient history: 191"
     },
     {
-      "code": "7799",
+      "code": "7791",
       "market": "TW",
-      "error": "insufficient history: 235"
+      "error": "insufficient history: 208"
     },
     {
       "code": "7803",
       "market": "TW",
       "error": "insufficient history: 75"
+    },
+    {
+      "code": "7799",
+      "market": "TW",
+      "error": "insufficient history: 235"
     },
     {
       "code": "7823",
@@ -62,15 +62,15 @@
     {
       "code": "7794",
       "market": "TWO",
-      "error": "insufficient history: 33"
+      "error": "insufficient history: 34"
     }
   ],
   "market_filter": {
-    "price": 46539.3516,
-    "ma5": 46284.8758,
-    "ma10": 45623.3539,
-    "ma20": 45401.6871,
-    "ma240": 35231.0364,
+    "price": 46315.7305,
+    "ma5": 46339.9172,
+    "ma10": 45762.2016,
+    "ma20": 45476.4984,
+    "ma240": 35322.4029,
     "bullish_ma": true,
     "above_ma240": true,
     "filter_on": true
