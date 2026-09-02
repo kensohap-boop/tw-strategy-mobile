@@ -1,4 +1,5 @@
 from pathlib import Path
+import argparse
 import json
 import time
 import urllib.request
@@ -526,13 +527,26 @@ def main():
         raise SystemExit(f"Too few successful stocks: {ok}/{len(universe)}. stocks.json was NOT overwritten.")
     Path("stocks.json").write_text(json.dumps(results, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
 
-    day = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
-    h = Path("history"); h.mkdir(exist_ok=True)
-    snapshot = {"date": day, "generated_at": generated_at, "market_filter": market_filter, "strategy_config": cfg, "stocks": results}
-    (h / f"{day}.json").write_text(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--mode", choices=["intraday", "final"], default="final")
+    args, _ = parser.parse_known_args()
 
-    signals, stats = rebuild_signals_and_stats(cfg, generated_at)
+    if args.mode == "final":
+        day = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d")
+        h = Path("history"); h.mkdir(exist_ok=True)
+        snapshot = {"date": day, "generated_at": generated_at, "market_filter": market_filter, "strategy_config": cfg, "stocks": results}
+        (h / f"{day}.json").write_text(json.dumps(snapshot, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        signals, stats = rebuild_signals_and_stats(cfg, generated_at)
+    else:
+        sig_data = load_json("signals_history.json", {})
+        stat_data = load_json("stats_summary.json", {})
+        signals = sig_data.get("signals", []) if isinstance(sig_data, dict) else []
+        stats = stat_data if isinstance(stat_data, dict) else {"groups": []}
+
     reminder = build_reminder_json(cfg, generated_at, results, market_filter, signals, stats)
+    reminder["run_mode"] = args.mode
+    Path("reminder.json").write_text(json.dumps(reminder, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    print("Run mode:", args.mode)
     print("Signals:", len(signals), "Stats groups:", len(stats.get("groups", [])))
     print("Reminder candidates:", len(reminder.get("scanner_candidates", [])),
           "Support candidates:", len(reminder.get("support_candidates", [])),
