@@ -171,11 +171,161 @@ jobs:
           mf_fg = "#047857" if mf_on else "#b91c1c"
           mf_label = "ON" if mf_on else "OFF"
 
+          # Derived portfolio metrics for a richer dashboard-style email.
+          capital = float(data.get("capital") or 0)
+
+          lev_lots = float(lev.get("lots") or 0)
+          lev_cost = float(lev.get("avg_cost") or 0)
+          lev_price = float(lev.get("latest_price") or 0)
+          lev_cost_value = lev_lots * 1000 * lev_cost
+          lev_market_value = lev_lots * 1000 * lev_price
+          lev_pnl = lev_market_value - lev_cost_value
+          lev_ret = ((lev_price / lev_cost) - 1) * 100 if lev_cost else None
+          lev_alloc = (lev_market_value / capital * 100) if capital else None
+
+          taiex_now = float(mf.get("price") or lev.get("taiex") or 0)
+          peak_index = float(lev.get("peak_index") or 0)
+          dd = ((taiex_now / peak_index) - 1) * 100 if peak_index else None
+          if dd is None or dd > -15:
+              add_stage = "目前 30% 基準部位"
+          elif dd > -30:
+              add_stage = "觸發 -15%：目標 40%"
+          elif dd > -45:
+              add_stage = "觸發 -30%：目標 55%"
+          elif dd > -60:
+              add_stage = "觸發 -45%：目標 75%"
+          else:
+              add_stage = "觸發 -60%：目標 90%"
+          rebalance_text = "達 +30%，應再平衡回 30%" if lev_ret is not None and lev_ret >= 30 else "尚未達 +30% 再平衡"
+
+          holding_cards = ""
+          holdings_market = 0.0
+          for h in holdings[:20]:
+              hp = h.get("latest_price")
+              hc = h.get("avg_cost")
+              hlots = float(h.get("lots") or 0)
+              hp_f = float(hp or 0)
+              hc_f = float(hc or 0)
+              mv = hlots * 1000 * hp_f
+              cv = hlots * 1000 * hc_f
+              holdings_market += mv
+              pnl_amt = mv - cv
+              pct = ((hp_f / hc_f) - 1) * 100 if hc_f else None
+
+              ma5 = float(h.get("ma5") or 0)
+              ma10 = float(h.get("ma10") or 0)
+              if ma10 and hp_f < ma10:
+                  signal = "🔴 跌破 MA10｜全出訊號"
+                  signal_bg, signal_fg = "#fef2f2", "#b91c1c"
+              elif ma5 and hp_f < ma5:
+                  signal = "🟠 跌破 MA5｜半出訊號"
+                  signal_bg, signal_fg = "#fff7ed", "#c2410c"
+              elif pct is not None and pct >= 20:
+                  signal = "🔴 +20%｜半出訊號"
+                  signal_bg, signal_fg = "#fef2f2", "#b91c1c"
+              elif pct is not None and pct >= 15:
+                  signal = "🟡 +15%｜接近半出"
+                  signal_bg, signal_fg = "#fefce8", "#a16207"
+              else:
+                  signal = "🟢 持有觀察"
+                  signal_bg, signal_fg = "#ecfdf5", "#047857"
+
+              holding_cards += f"""
+              <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:15px;margin:9px 0;">
+                <div style="font-size:17px;font-weight:800;color:#111827;">{esc(h.get('code',''))} {esc(h.get('name',''))}</div>
+                <div style="margin-top:7px;color:#4b5563;font-size:14px;line-height:1.8;">
+                  {esc(h.get('lots',0))} 張 · 成本 {esc(h.get('avg_cost','-'))} · 最新 {esc(h.get('latest_price','-'))}<br>
+                  未實現損益 {esc(f"{pnl_amt:+,.0f}")} 元 · 報酬 {esc(f"{pct:+.2f}%") if pct is not None else '-'}<br>
+                  MA5 {esc(h.get('ma5','-'))} · MA10 {esc(h.get('ma10','-'))}
+                </div>
+                <div style="display:inline-block;margin-top:9px;background:{signal_bg};color:{signal_fg};font-weight:700;border-radius:999px;padding:6px 10px;font-size:12px;">{signal}</div>
+              </div>
+              """
+          if not holding_cards:
+              holding_cards = '<div style="color:#6b7280;">目前無個股持倉</div>'
+
+          total_invested = lev_market_value + holdings_market
+          cash_est = capital - total_invested if capital else None
+          total_alloc = (total_invested / capital * 100) if capital else None
+
+          def chips(items, limit=40):
+              if not items:
+                  return '<span style="color:#9ca3af;">無</span>'
+              return "".join(
+                  f'<span style="display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:6px 10px;margin:4px 4px 0 0;font-size:13px;">{esc(x.get("code",""))} {esc(x.get("name",""))}</span>'
+                  for x in items[:limit]
+              )
+
+          mf_on = bool(mf.get("filter_on"))
+          mf_bg = "#ecfdf5" if mf_on else "#fef2f2"
+          mf_fg = "#047857" if mf_on else "#b91c1c"
+          mf_label = "ON" if mf_on else "OFF"
+
+          # Statistics ranking table.
+          stats_rows_html = ""
+          for r in (data.get("stats_ranking") or []):
+              up = r.get("avg_max_up_pct")
+              down = r.get("avg_max_down_pct")
+              cum = r.get("avg_cumulative_pct")
+              stats_rows_html += f"""
+              <tr>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;font-weight:700;">#{esc(r.get('rank','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;">{esc(r.get('group','-'))}・{esc(r.get('market_filter_label','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(f"{up:+.2f}%") if isinstance(up,(int,float)) else '-'}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(f"{down:+.2f}%") if isinstance(down,(int,float)) else '-'}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(f"{cum:+.2f}%") if isinstance(cum,(int,float)) else '-'}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(r.get('samples',0))}</td>
+              </tr>
+              """
+
+          support_rows = ""
+          for x in tracking[:30]:
+              support_rows += f"""
+              <tr>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;font-weight:700;">{esc(x.get('code',''))} {esc(x.get('name',''))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;">{esc(x.get('group','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">#{esc(x.get('stats_rank','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(x.get('latest_price','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(x.get('latest_ma5','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(x.get('d0_midpoint','-'))}</td>
+              </tr>
+              """
+
+          waiting_rows = ""
+          for x in waiting[:40]:
+              d0 = float(x.get("d0_close") or 0)
+              mid = x.get("d0_midpoint")
+              wait_limit = d0 * 1.05 if d0 else None
+              waiting_rows += f"""
+              <tr>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;font-weight:700;">{esc(x.get('code',''))} {esc(x.get('name',''))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;">{esc(x.get('group','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">#{esc(x.get('stats_rank','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(x.get('d0_close','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(mid if mid is not None else '-')}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(f"{wait_limit:.2f}") if wait_limit is not None else '-'}</td>
+              </tr>
+              """
+
+          candidate_rows = ""
+          for x in scanner[:50]:
+              candidate_rows += f"""
+              <tr>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;font-weight:700;">{esc(x.get('code',''))} {esc(x.get('name',''))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;">{esc(x.get('group','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">#{esc(x.get('stats_rank','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(x.get('price','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(x.get('ma5','-'))}</td>
+                <td style="padding:9px 6px;border-bottom:1px solid #f1f5f9;text-align:right;">{esc(x.get('ma10','-'))}</td>
+              </tr>
+              """
+
           html_body = f"""
           <!doctype html>
           <html>
           <body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#111827;">
-            <div style="max-width:680px;margin:0 auto;padding:20px 14px 34px;">
+            <div style="max-width:720px;margin:0 auto;padding:20px 14px 34px;">
+
               <div style="background:linear-gradient(135deg,#111827,#374151);color:white;border-radius:22px;padding:22px;">
                 <div style="font-size:13px;opacity:.8;">TW STRATEGY</div>
                 <div style="font-size:26px;font-weight:800;margin-top:4px;">每日策略摘要</div>
@@ -183,23 +333,42 @@ jobs:
               </div>
 
               <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
+                <div style="font-size:18px;font-weight:800;">💰 資金總覽</div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(f"{capital:,.0f}")}</b><br><span style="font-size:12px;color:#6b7280;">總資金</span></div>
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(f"{total_invested:,.0f}")}</b><br><span style="font-size:12px;color:#6b7280;">目前投入</span></div>
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(f"{cash_est:,.0f}") if cash_est is not None else '-'}</b><br><span style="font-size:12px;color:#6b7280;">估計現金</span></div>
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(f"{total_alloc:.1f}%") if total_alloc is not None else '-'}</b><br><span style="font-size:12px;color:#6b7280;">總資金占比</span></div>
+                </div>
+              </div>
+
+              <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
                 <div style="display:flex;align-items:center;justify-content:space-between;">
-                  <div style="font-size:18px;font-weight:800;">大盤濾網</div>
+                  <div style="font-size:18px;font-weight:800;">📈 大盤濾網</div>
                   <div style="background:{mf_bg};color:{mf_fg};font-weight:800;border-radius:999px;padding:7px 12px;">{mf_label}</div>
                 </div>
                 <div style="font-size:26px;font-weight:800;margin-top:12px;">TAIEX {esc(mf.get('price','-'))}</div>
-                <div style="color:#6b7280;font-size:13px;line-height:1.7;margin-top:6px;">
+                <div style="color:#6b7280;font-size:13px;line-height:1.8;margin-top:6px;">
                   MA5 {esc(mf.get('ma5','-'))} · MA10 {esc(mf.get('ma10','-'))}<br>
-                  MA20 {esc(mf.get('ma20','-'))} · MA240 {esc(mf.get('ma240','-'))}
+                  MA20 {esc(mf.get('ma20','-'))} · MA240 {esc(mf.get('ma240','-'))}<br>
+                  多頭排列：{'✅' if mf.get('bullish_ma') else '❌'}　年線之上：{'✅' if mf.get('above_ma240') else '❌'}
                 </div>
               </div>
 
               <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
                 <div style="font-size:18px;font-weight:800;">🚀 正2｜00631L</div>
-                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
                   <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(lev.get('lots',0))}</b><br><span style="font-size:12px;color:#6b7280;">張數</span></div>
                   <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(lev.get('avg_cost','-'))}</b><br><span style="font-size:12px;color:#6b7280;">平均成本</span></div>
                   <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(lev.get('latest_price','-'))}</b><br><span style="font-size:12px;color:#6b7280;">最新價</span></div>
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(f"{lev_ret:+.2f}%") if lev_ret is not None else '-'}</b><br><span style="font-size:12px;color:#6b7280;">報酬率</span></div>
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(f"{lev_pnl:+,.0f}")}</b><br><span style="font-size:12px;color:#6b7280;">未實現損益</span></div>
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(f"{lev_alloc:.1f}%") if lev_alloc is not None else '-'}</b><br><span style="font-size:12px;color:#6b7280;">資金占比</span></div>
+                </div>
+                <div style="margin-top:12px;color:#4b5563;font-size:14px;line-height:1.8;">
+                  台指高點 {esc(peak_index or '-')} · 目前回撤 {esc(f"{dd:.2f}%") if dd is not None else '-'}<br>
+                  加碼階段：<b>{esc(add_stage)}</b><br>
+                  再平衡：<b>{esc(rebalance_text)}</b>
                 </div>
               </div>
 
@@ -210,21 +379,46 @@ jobs:
 
               <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
                 <div style="font-size:18px;font-weight:800;">✅ D1 已確認支撐 <span style="color:#6b7280;font-size:14px;">{len(tracking)} 檔</span></div>
-                <div style="margin-top:8px;">{chips(tracking)}</div>
+                <div style="overflow-x:auto;margin-top:8px;">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <tr style="color:#6b7280;"><th align="left">股票</th><th>組別</th><th>排名</th><th>最新</th><th>MA5</th><th>D0半K</th></tr>
+                    {support_rows}
+                  </table>
+                </div>
               </div>
 
               <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
                 <div style="font-size:18px;font-weight:800;">⏳ 等待 D1 <span style="color:#6b7280;font-size:14px;">{len(waiting)} 檔</span></div>
-                <div style="margin-top:8px;">{chips(waiting)}</div>
+                <div style="overflow-x:auto;margin-top:8px;">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <tr style="color:#6b7280;"><th align="left">股票</th><th>組別</th><th>排名</th><th>D0收盤</th><th>D0半K</th><th>+5%上限</th></tr>
+                    {waiting_rows}
+                  </table>
+                </div>
               </div>
 
               <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
-                <div style="font-size:18px;font-weight:800;">🔎 目前掃描候選</div>
-                <div style="font-size:34px;font-weight:800;margin-top:6px;">{len(scanner)} <span style="font-size:14px;color:#6b7280;">檔</span></div>
+                <div style="font-size:18px;font-weight:800;">🔎 目前掃描候選 <span style="color:#6b7280;font-size:14px;">{len(scanner)} 檔</span></div>
+                <div style="overflow-x:auto;margin-top:8px;">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <tr style="color:#6b7280;"><th align="left">股票</th><th>組別</th><th>排名</th><th>現價</th><th>MA5</th><th>MA10</th></tr>
+                    {candidate_rows}
+                  </table>
+                </div>
+              </div>
+
+              <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
+                <div style="font-size:18px;font-weight:800;">📊 統計排名｜最大漲幅排序</div>
+                <div style="overflow-x:auto;margin-top:8px;">
+                  <table style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <tr style="color:#6b7280;"><th>排名</th><th align="left">條件</th><th>最大漲幅</th><th>最大跌幅</th><th>累積漲跌</th><th>筆數</th></tr>
+                    {stats_rows_html}
+                  </table>
+                </div>
               </div>
 
               <div style="text-align:center;color:#9ca3af;font-size:12px;margin-top:18px;">
-                完整 JSON 已保留在純文字版本，供 ChatGPT 自動提醒解析。
+                完整 JSON 保留在純文字版本，供 ChatGPT 13:00 / 20:00 自動提醒解析。
               </div>
             </div>
           </body>
