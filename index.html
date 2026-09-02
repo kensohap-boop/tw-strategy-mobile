@@ -263,13 +263,30 @@ async function loadStats(){
  }
 }
 function renderStats(){
- const rows=Array.isArray(statsData?.groups)?[...statsData.groups]:[];
- rows.sort((a,b)=>(+b.avg_max_up_pct||-999)-(+a.avg_max_up_pct||-999));
- const p=v=>Number.isFinite(+v)?`${+v>=0?'+':''}${(+v).toFixed(2)}%`:'—';
- if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・以站穩支撐收盤為基準・最多追蹤 ${statsData.window_trading_days||10} 個交易日・條件版 ${statsData?.config?.version||'—'}`;
+ const raw=Array.isArray(statsData?.groups)?statsData.groups:[];
+ const names={A:'① 6/6 全部符合',B:'② 5/6・僅放量未過',C:'③ 5/6・僅成交量未過',D:'④ 5/6・僅多頭未過',E:'⑤ 5/6・僅年線未過',F:'⑥ 5/6・僅均線糾結未過'};
+ // 永遠補齊 A～F × 大盤通過/未通過，共 12 列。
+ let rows=[];
+ for(const gid of ['A','B','C','D','E','F']){
+   for(const filterOn of [true,false]){
+     const found=raw.find(x=>String(x.group||'').toUpperCase()===gid && x.market_filter_on===filterOn);
+     rows.push(found||{group:gid,name:names[gid],market_filter_on:filterOn,market_filter_label:filterOn?'通過':'未通過',avg_max_up_pct:null,avg_max_down_pct:null,avg_cumulative_pct:null,samples:0});
+   }
+ }
+ // 尚無任何樣本時維持 A通過、A未通過、B通過、B未通過…；開始有資料後依「平均最大漲幅」由高到低排名，無樣本排最後。
+ const hasSamples=rows.some(x=>(+x.samples||0)>0 && Number.isFinite(Number(x.avg_max_up_pct)));
+ if(hasSamples){
+   rows.sort((a,b)=>{
+     const av=Number(a.avg_max_up_pct),bv=Number(b.avg_max_up_pct);
+     const aa=((+a.samples||0)>0&&Number.isFinite(av))?av:-Infinity;
+     const bb=((+b.samples||0)>0&&Number.isFinite(bv))?bv:-Infinity;
+     return bb-aa;
+   });
+ }
+ const p=v=>(v!==null&&v!==''&&Number.isFinite(Number(v)))?`${Number(v)>=0?'+':''}${Number(v).toFixed(2)}%`:'—';
+ if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・以站穩支撐收盤為基準・最多追蹤 ${statsData.window_trading_days||10} 個交易日・12 組依最大漲幅排名・條件版 ${statsData?.config?.version||'—'}`;
  if(!$('statsBody'))return;
- if(!rows.length){$('statsBody').innerHTML='<tr><td colspan="6">目前尚無站穩支撐樣本</td></tr>';return}
- $('statsBody').innerHTML=rows.map((x,i)=>`<tr><td><b>${i+1}. ${x.name||x.group||'—'}</b></td><td><b>${x.market_filter_label||(x.market_filter_on===true?'通過':x.market_filter_on===false?'未通過':'—')}</b></td><td class="${(+x.avg_max_up_pct||0)>=0?'pos':'neg'}">${p(x.avg_max_up_pct)}</td><td class="${(+x.avg_max_down_pct||0)<0?'neg':'pos'}">${p(x.avg_max_down_pct)}</td><td class="${(+x.avg_cumulative_pct||0)>=0?'pos':'neg'}">${p(x.avg_cumulative_pct)}</td><td class=countCell>${x.samples||0}</td></tr>`).join('');
+ $('statsBody').innerHTML=rows.map((x,i)=>`<tr><td><b>${i+1}. ${x.name||names[x.group]||x.group||'—'}</b></td><td><b>${x.market_filter_on===true?'✅ 通過':'❌ 未通過'}</b></td><td class="${Number(x.avg_max_up_pct)>=0?'pos':'neg'}">${p(x.avg_max_up_pct)}</td><td class="${Number(x.avg_max_down_pct)<0?'neg':'pos'}">${p(x.avg_max_down_pct)}</td><td class="${Number(x.avg_cumulative_pct)>=0?'pos':'neg'}">${p(x.avg_cumulative_pct)}</td><td class=countCell>${x.samples||0}</td></tr>`).join('');
 }
 
 document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{document.querySelectorAll('.tab,.page').forEach(x=>x.classList.remove('on'));t.classList.add('on');$(t.dataset.p).classList.add('on')});
