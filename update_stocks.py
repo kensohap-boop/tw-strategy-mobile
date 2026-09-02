@@ -11,7 +11,7 @@ TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"}
 DEFAULT_CONFIG = {
-    "version": "2026-09-02.7",
+    "version": "2026-09-02.8",
     "compact_ma_pct": 0.03,
     "min_avg_volume_lots": 10000,
     "volume_multiplier": 2.0,
@@ -365,12 +365,56 @@ def rebuild_signals_and_stats(cfg, generated_at):
         highs = [float(x.get("high", x.get("close", entry_price))) for x in future]
         lows = [float(x.get("low", x.get("close", entry_price))) for x in future]
         closes = [float(x.get("close", entry_price)) for x in future]
+
+        # 真實策略回測：初始部位=100%。「賣一半」皆指當下剩餘部位的一半。
+        # 同日優先順序：跌破MA10全出 > 觸及+20%賣半 > 跌破MA5賣半。
+        remain, realized = 1.0, 0.0
+        hit20, ma5_done = False, False
+        exits = []
+        for day_no, x in enumerate(future[:10], 1):
+            close = float(x.get("close", entry_price) or entry_price)
+            high = float(x.get("high", close) or close)
+            ma5 = float(x.get("ma5", 0) or 0)
+            ma10 = float(x.get("ma10", 0) or 0)
+
+            if ma10 > 0 and close < ma10 and remain > 0:
+                qty = remain
+                realized += qty * (close / entry_price - 1)
+                exits.append({"day":day_no,"rule":"跌破MA10全出","fraction":qty,"price":close})
+                remain = 0
+                break
+
+            if (not hit20) and high >= entry_price * 1.20 and remain > 0:
+                qty = remain * 0.5
+                realized += qty * 0.20
+                remain -= qty
+                hit20 = True
+                exits.append({"day":day_no,"rule":"+20%賣剩餘一半","fraction":qty,"price":entry_price*1.20})
+
+            if (not ma5_done) and ma5 > 0 and close < ma5 and remain > 0:
+                qty = remain * 0.5
+                realized += qty * (close / entry_price - 1)
+                remain -= qty
+                ma5_done = True
+                exits.append({"day":day_no,"rule":"跌破MA5賣剩餘一半","fraction":qty,"price":close})
+
+            if day_no == 10 and remain > 0:
+                qty = remain
+                realized += qty * (close / entry_price - 1)
+                exits.append({"day":day_no,"rule":"第10日剩餘全出","fraction":qty,"price":close})
+                remain = 0
+
+        strategy_complete = remain == 0
         return {
             "max_up_pct": (max(highs) / entry_price - 1) * 100,
             "max_down_pct": (min(lows) / entry_price - 1) * 100,
             "final_pct": (closes[-1] / entry_price - 1) * 100,
             "days": len(future),
             "complete": len(future) >= 10,
+            "strategy_return_pct": realized * 100 if strategy_complete else None,
+            "strategy_complete": strategy_complete,
+            "strategy_hit20": hit20,
+            "strategy_exits": exits,
         }
 
     samples = {(sid, cid): [] for sid in scenario_names for cid in [f"{n:06b}" for n in range(64)]}
@@ -431,6 +475,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
                 av = lambda k: sum(x[k] for x in arr) / len(arr)
                 finals = sorted(x["final_pct"] for x in arr)
                 med = finals[len(finals)//2] if len(finals)%2 else (finals[len(finals)//2-1]+finals[len(finals)//2])/2
+                sr = [x["strategy_return_pct"] for x in arr if x.get("strategy_return_pct") is not None]
                 row = {
                     "scenario": sid, "scenario_name": sname, "combo_id": cid,
                     "combo": [{"name": labels[j], "value": bits[j]} for j in range(6)],
@@ -441,6 +486,14 @@ def rebuild_signals_and_stats(cfg, generated_at):
                     "median_final_pct": round(med, 4),
                     "win_rate_pct": round(sum(1 for x in arr if x["max_up_pct"] >= 20) / len(arr) * 100, 2),
                     "win_definition": "買入後10個交易日內最高漲幅曾達20%",
+                    "strategy_avg_return_pct": round(sum(sr)/len(sr),4) if sr else None,
+                    "strategy_total_pnl_pct": round(sum(sr),4) if sr else None,
+                    "strategy_profit_rate_pct": round(sum(v>0 for v in sr)/len(sr)*100,2) if sr else None,
+                    "strategy_avg_win_pct": round(sum(v for v in sr if v>0)/sum(v>0 for v in sr),4) if any(v>0 for v in sr) else None,
+                    "strategy_avg_loss_pct": round(sum(v for v in sr if v<0)/sum(v<0 for v in sr),4) if any(v<0 for v in sr) else None,
+                    "strategy_best_trade_pct": round(max(sr),4) if sr else None,
+                    "strategy_worst_trade_pct": round(min(sr),4) if sr else None,
+                    "strategy_complete_samples": len(sr),
                     "samples": len(arr), "complete_samples": sum(1 for x in arr if x["complete"]),
                 }
             else:
@@ -450,14 +503,23 @@ def rebuild_signals_and_stats(cfg, generated_at):
                     "avg_max_up_pct": None, "avg_max_down_pct": None, "avg_final_pct": None,
                     "cumulative_pct": None, "median_final_pct": None, "win_rate_pct": None,
                     "win_definition": "買入後10個交易日內最高漲幅曾達20%",
+                    "strategy_avg_return_pct": None, "strategy_total_pnl_pct": None,
+                    "strategy_profit_rate_pct": None, "strategy_avg_win_pct": None, "strategy_avg_loss_pct": None,
+                    "strategy_best_trade_pct": None, "strategy_worst_trade_pct": None, "strategy_complete_samples": 0,
                     "samples": 0, "complete_samples": 0,
                 }
             combo_rows.append(row)
 
     # Global ranking across all 64 combinations x 5 scenarios = 320 possible results.
     # Only the best five are surfaced to the website/reminder.
-    ranked_all = [x for x in combo_rows if x["samples"] > 0]
-    ranked_all.sort(key=lambda x: (-(x["avg_max_up_pct"] if x["avg_max_up_pct"] is not None else -999999), -x["win_rate_pct"], -x["samples"], x["scenario"], x["combo_id"]))
+    ranked_all = [x for x in combo_rows if x.get("strategy_complete_samples", 0) > 0]
+    ranked_all.sort(key=lambda x: (
+        -(x["strategy_avg_return_pct"] if x["strategy_avg_return_pct"] is not None else -999999),
+        -(x["win_rate_pct"] or 0),
+        -x["strategy_complete_samples"],
+        x["strategy_worst_trade_pct"] if x["strategy_worst_trade_pct"] is not None else 999999,
+        x["scenario"], x["combo_id"]
+    ))
     rank_lookup = {}
     for rank, row in enumerate(ranked_all, 1):
         rank_lookup[(row["scenario"], row["combo_id"])] = rank
@@ -465,11 +527,19 @@ def rebuild_signals_and_stats(cfg, generated_at):
     global_top5 = ranked_all[:5]
     # A recommendation is valid only after the new statistics have at least one real sample.
     # Zero-sample / stale legacy data can never become a buy recommendation.
-    top5_keys = {f"{x['scenario']}:{x['combo_id']}" for x in global_top5 if int(x.get("samples", 0) or 0) > 0}
+    top5_keys = {f"{x['scenario']}:{x['combo_id']}" for x in global_top5 if int(x.get("strategy_complete_samples", 0) or 0) > 0}
 
     summary = {
         "generated_at": generated_at,
-        "basis": "scenario_entry_close",
+                "basis": "actual_exit_rule_backtest",
+        "ranking": "strategy_avg_return_pct_desc",
+        "strategy_backtest_rules": {
+            "profit_target": "+20%時賣目前剩餘持股的一半（一次）",
+            "ma5": "收盤跌破MA5賣目前剩餘持股的一半（一次）",
+            "ma10": "收盤跌破MA10全部出清",
+            "day10": "第10個交易日剩餘部位全部出清",
+            "same_day_priority": "MA10全出 > +20%賣半 > MA5賣半"
+        },
         "outcome_window_trading_days": 10,
         "win_definition": "買入後10個交易日內最高漲幅曾達20%",
         "exit_rules": {
@@ -512,6 +582,12 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
             "avg_final_pct": row.get("avg_final_pct"),
             "cumulative_pct": row.get("cumulative_pct"),
             "win_rate_pct": row.get("win_rate_pct"),
+            "strategy_avg_return_pct": row.get("strategy_avg_return_pct"),
+            "strategy_total_pnl_pct": row.get("strategy_total_pnl_pct"),
+            "strategy_profit_rate_pct": row.get("strategy_profit_rate_pct"),
+            "strategy_best_trade_pct": row.get("strategy_best_trade_pct"),
+            "strategy_worst_trade_pct": row.get("strategy_worst_trade_pct"),
+            "strategy_complete_samples": row.get("strategy_complete_samples", 0),
             "samples": row.get("samples", 0),
         })
     top5_keys = set(stats.get("top5_keys") or [])
@@ -590,7 +666,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
         if scenario_key not in top5_keys:
             continue
         matched_stat = next((r for r in stats_rows if r.get("scenario") == scenario and r.get("combo_id") == cid), {})
-        if int(matched_stat.get("samples", 0) or 0) <= 0:
+        if int(matched_stat.get("strategy_complete_samples", 0) or 0) <= 0:
             continue
         support_candidates.append({
             "code": sig.get("code"),
@@ -608,6 +684,11 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
             "avg_final_pct": matched_stat.get("avg_final_pct"),
             "win_rate_pct": matched_stat.get("win_rate_pct"),
             "samples": matched_stat.get("samples", 0),
+            "strategy_complete_samples": matched_stat.get("strategy_complete_samples", 0),
+            "strategy_avg_return_pct": matched_stat.get("strategy_avg_return_pct"),
+            "strategy_profit_rate_pct": matched_stat.get("strategy_profit_rate_pct"),
+            "strategy_best_trade_pct": matched_stat.get("strategy_best_trade_pct"),
+            "strategy_worst_trade_pct": matched_stat.get("strategy_worst_trade_pct"),
             "status": status,
             "d0_date": sig.get("d0_date"),
             "d0_close": sig.get("d0_close"),
@@ -657,7 +738,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
     }
 
     out = {
-        "schema_version": "2026-09-02.7",
+        "schema_version": "2026-09-02.8",
         "generated_at": generated_at,
         "strategy_config": cfg,
         "market_filter": market_filter,
