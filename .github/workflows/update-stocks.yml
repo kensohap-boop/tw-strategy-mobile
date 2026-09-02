@@ -72,11 +72,61 @@ jobs:
           msg["Subject"] = "TW Strategy Reminder Data"
           msg["From"] = username
           msg["To"] = username
-          msg.set_content(
-              "TW Strategy reminder data\n"
-              f"generated_at: {generated_at}\n\n"
-              + json.dumps(data, ensure_ascii=False, indent=2)
+
+          mf = data.get("market_filter") or {}
+          lev = data.get("leveraged") or {}
+          holdings = data.get("holdings") or []
+          support = data.get("support_candidates") or []
+          scanner = data.get("scanner_candidates") or []
+
+          market_text = "ON" if mf.get("filter_on") else "OFF"
+          leveraged_line = (
+              f"00631L｜{lev.get('lots', 0)} 張｜成本 {lev.get('avg_cost', '-')}｜"
+              f"最新 {lev.get('latest_price', '-')}"
           )
+
+          holding_lines = []
+          for h in holdings[:10]:
+              holding_lines.append(
+                  f"{h.get('code','')} {h.get('name','')}｜{h.get('lots',0)} 張｜"
+                  f"成本 {h.get('avg_cost','-')}｜最新 {h.get('latest_price','-')}｜"
+                  f"MA5 {h.get('ma5','-')}｜MA10 {h.get('ma10','-')}"
+              )
+          if not holding_lines:
+              holding_lines = ["目前無個股持倉"]
+
+          tracking = [x for x in support if x.get("status") == "tracking"]
+          waiting = [x for x in support if x.get("status") == "waiting_d1"]
+
+          summary = "\n".join([
+              "【TW Strategy 每日資料摘要】",
+              f"資料時間：{generated_at}",
+              "",
+              f"大盤濾網：{market_text}",
+              f"TAIEX：{mf.get('price','-')}",
+              f"MA5 / MA10 / MA20 / MA240：{mf.get('ma5','-')} / {mf.get('ma10','-')} / {mf.get('ma20','-')} / {mf.get('ma240','-')}",
+              "",
+              "【正2】",
+              leveraged_line,
+              "",
+              "【個股持倉】",
+              *holding_lines,
+              "",
+              f"【D1 已確認支撐】{len(tracking)} 檔",
+              "、".join(f"{x.get('code','')} {x.get('name','')}" for x in tracking[:20]) or "無",
+              "",
+              f"【等待 D1】{len(waiting)} 檔",
+              "、".join(f"{x.get('code','')} {x.get('name','')}" for x in waiting[:20]) or "無",
+              "",
+              f"【目前掃描候選】{len(scanner)} 檔",
+              "",
+              "──────────────",
+              "以下為 ChatGPT 自動提醒用完整 JSON，平常可忽略",
+              "──────────────",
+              json.dumps(data, ensure_ascii=False, indent=2),
+          ])
+
+          msg.set_content(summary)
 
           with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
               smtp.login(username, app_password)
