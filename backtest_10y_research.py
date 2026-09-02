@@ -270,13 +270,19 @@ def main():
                     "strategy_median_return_pct":round(sorted(rets)[len(rets)//2],4) if rets else None,
                     "strategy_profit_rate_pct":round(sum(x>0 for x in rets)/len(rets)*100,2) if rets else None,
                     "hit20_rate_pct":round(sum(x["hit20"] for x in arr)/len(arr)*100,2) if arr else None})
-    s1_trades=[{"code":x["code"],"name":x["name"],"d0_date":x["d0_date"],
+    # Research-only detail for ALL 5 scenarios / 320 combinations.
+    # This lets us test whether D-2/D-1 pre-breakout features distinguish
+    # strong continuation from failed/weak breakouts without changing strategy rules.
+    all_trade_details=[{"scenario":x["scenario"],"scenario_name":SCENARIOS[x["scenario"]],
+        "code":x["code"],"name":x["name"],"d0_date":x["d0_date"],
         "entry_date":x["entry_date"],"entry_price":round(x["entry_price"],4),"combo_id":x["combo_id"],
         "strategy_return_pct":round(x["strategy_return_pct"],4),"hit20":x["hit20"],
-        "exits":x["exits"],"compact_research":x["compact_research"],"prebreak_research":x["prebreak_research"]}
-        for x in all_samples if x["scenario"]=="S1"]
+        "exits":x["exits"],"compact_research":x["compact_research"],
+        "prebreak_research":x["prebreak_research"]}
+        for x in all_samples]
+    s1_trades=[x for x in all_trade_details if x["scenario"]=="S1"]
 
-    result={'schema_version':'2026-09-03.backtest10y.4','generated_at':now.isoformat(),'period':{'start':start,'end':now.date().isoformat(),'years':a.years},'methodology':{'purpose':'exploratory historical baseline; forward daily data remains out-of-sample validation','universe':'current TWSE/TPEx universe; survivorship bias possible','price_source':'Yahoo Finance daily chart, OHLC adjusted by adjclose/close factor','limit_up_note':'historical limit-up close approximated as adjusted close return >=9.5%; validate important rows against official data','mother_filter':'MA5/10/20 spread <=5%; D0 return >0; D0 close above MA5/10/20','compact_research_note':'research only; mother filter is 5%. Pre-D0 compact-duration research retained. Added D-2/D-1/D0 daily price-volume features to study pre-breakout commonality; strategy rules unchanged.','exit_rules':['intraday high reaches +20%: sell half of current remaining at +20%','close below MA5: sell half of current remaining','close below MA10: sell all remaining','D10: sell all remaining','same-day priority MA10 > +20% > MA5']},'universe_count':len(items),'failed_symbols':failures,'d0_count':len(all_d0),'completed_strategy_samples':len(all_samples),'yearly':[{'year':y,'samples':len(v),'avg_return_pct':round(sum(v)/len(v),4),'profit_rate_pct':round(sum(x>0 for x in v)/len(v)*100,2)} for y,v in sorted(yearly.items())],'combination_stats':rows,'top20':ranked[:20],'compact_duration_stats':compact_stats,'s1_trade_details':s1_trades}
+    result={'schema_version':'2026-09-03.backtest10y.5','generated_at':now.isoformat(),'period':{'start':start,'end':now.date().isoformat(),'years':a.years},'methodology':{'purpose':'exploratory historical baseline; forward daily data remains out-of-sample validation','universe':'current TWSE/TPEx universe; survivorship bias possible','price_source':'Yahoo Finance daily chart, OHLC adjusted by adjclose/close factor','limit_up_note':'historical limit-up close approximated as adjusted close return >=9.5%; validate important rows against official data','mother_filter':'MA5/10/20 spread <=5%; D0 return >0; D0 close above MA5/10/20','compact_research_note':'research only; mother filter is 5%. Pre-D0 compact-duration research retained. Added D-2/D-1/D0 daily price-volume features for all 5 scenarios / 320 combinations to test true-vs-failed breakout discrimination; strategy rules unchanged.','exit_rules':['intraday high reaches +20%: sell half of current remaining at +20%','close below MA5: sell half of current remaining','close below MA10: sell all remaining','D10: sell all remaining','same-day priority MA10 > +20% > MA5']},'universe_count':len(items),'failed_symbols':failures,'d0_count':len(all_d0),'completed_strategy_samples':len(all_samples),'yearly':[{'year':y,'samples':len(v),'avg_return_pct':round(sum(v)/len(v),4),'profit_rate_pct':round(sum(x>0 for x in v)/len(v)*100,2)} for y,v in sorted(yearly.items())],'combination_stats':rows,'top20':ranked[:20],'compact_duration_stats':compact_stats,'all_trade_details':all_trade_details,'s1_trade_details':s1_trades}
     Path(a.out).write_text(json.dumps(result,ensure_ascii=False,separators=(',',':')),encoding='utf-8')
     print('wrote',a.out,'D0',len(all_d0),'samples',len(all_samples),'eligible',len(ranked))
 if __name__=='__main__': main()
