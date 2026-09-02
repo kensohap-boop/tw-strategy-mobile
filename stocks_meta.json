@@ -1,7 +1,7 @@
 {
-  "generated_at": "2026-09-02 11:00:58",
-  "universe": 1973,
-  "ok": 1961,
+  "generated_at": "2026-09-02 19:57:22",
+  "universe": 1972,
+  "ok": 1960,
   "errors": 12,
   "sample_errors": [
     {
@@ -20,11 +20,6 @@
       "error": "insufficient history: 191"
     },
     {
-      "code": "7799",
-      "market": "TW",
-      "error": "insufficient history: 235"
-    },
-    {
       "code": "7791",
       "market": "TW",
       "error": "insufficient history: 208"
@@ -33,6 +28,11 @@
       "code": "7803",
       "market": "TW",
       "error": "insufficient history: 75"
+    },
+    {
+      "code": "7799",
+      "market": "TW",
+      "error": "insufficient history: 235"
     },
     {
       "code": "7823",
@@ -66,21 +66,22 @@
     }
   ],
   "market_filter": {
-    "price": 46233.8789,
-    "ma5": 46323.5469,
-    "ma10": 45754.0164,
-    "ma20": 45472.4059,
-    "ma240": 35322.0619,
+    "price": 46164.7188,
+    "ma5": 46209.9492,
+    "ma10": 45585.8906,
+    "ma20": 45382.9555,
+    "ma240": 35229.4754,
     "bullish_ma": true,
     "above_ma240": true,
     "filter_on": true
   },
   "strategy_config": {
     "version": "2026-09-02.1",
-    "compact_ma_pct": 0.05,
+    "compact_ma_pct": 0.03,
     "min_avg_volume_lots": 10000.0,
     "volume_multiplier": 2.0,
     "support_max_gap_pct": 0.05,
-    "tracking_days": 10
+    "tracking_days": 10,
+    "record_through_d": 13
   }
 }
