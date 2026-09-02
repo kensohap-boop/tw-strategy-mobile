@@ -16,7 +16,8 @@ DEFAULT_CONFIG = {
     "min_avg_volume_lots": 10000,
     "volume_multiplier": 2.0,
     "support_max_gap_pct": 0.05,
-    "tracking_days": 10,
+    "tracking_days": 12,
+    "record_through_d": 13,
 }
 
 GROUP_NAMES = {
@@ -55,7 +56,8 @@ def load_config():
     cfg["min_avg_volume_lots"] = float(cfg.get("min_avg_volume_lots", 10000))
     cfg["volume_multiplier"] = float(cfg.get("volume_multiplier", 2.0))
     cfg["support_max_gap_pct"] = float(cfg.get("support_max_gap_pct", 0.05))
-    cfg["tracking_days"] = int(cfg.get("tracking_days", 10))
+    cfg["tracking_days"] = int(cfg.get("tracking_days", 12))
+    cfg["record_through_d"] = int(cfg.get("record_through_d", 13))
     return cfg
 
 def get_universe():
@@ -231,6 +233,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
     snaps = read_history_snapshots()
     signals = []
     tracking_days = cfg["tracking_days"]
+    record_through_d = cfg.get("record_through_d", 13)
     for i, d0 in enumerate(snaps):
         stocks0 = d0.get("stocks") or {}
         d0_date = d0.get("date") or ""
@@ -254,10 +257,62 @@ def rebuild_signals_and_stats(cfg, generated_at):
                 "d0_limit_up_price": rec0.get("limit_up_price"),
                 "d0_limit_up_close": bool(rec0.get("limit_up_close", False)),
                 "d0_limit_up_touched": bool(rec0.get("limit_up_touched", False)),
+                "d0_volume_lots": rec0.get("volume_lots"),
+                "d0_volume20_avg_lots": rec0.get("volume20_avg_lots"),
                 "market_filter": d0.get("market_filter") or {},
                 "config_version": cfg.get("version", ""),
                 "status": "waiting_d1",
             }
+            # Permanent raw path: D0 through D13 inclusive.
+            # Keep rich daily fields so future studies can redefine "volume contraction"
+            # or "not breaking support" without losing the original observations.
+            daily_path = []
+            d0_vol = float(rec0.get("volume_lots", 0) or 0)
+            d0_close_num = float(rec0.get("price", 0) or 0)
+            d0_high_num = float(rec0.get("high", d0_close_num) or d0_close_num)
+            d0_low_num = float(rec0.get("low", d0_close_num) or d0_close_num)
+            d0_mid_num = (d0_high_num + d0_low_num) / 2.0 if d0_close_num > 0 else 0
+            for day_no, snap in enumerate(snaps[i:i + record_through_d + 1]):
+                rx = (snap.get("stocks") or {}).get(code)
+                if not rx:
+                    continue
+                try:
+                    close_x = float(rx.get("price", 0) or 0)
+                    high_x = float(rx.get("high", close_x) or close_x)
+                    low_x = float(rx.get("low", close_x) or close_x)
+                    vol_x = float(rx.get("volume_lots", 0) or 0)
+                    if close_x <= 0:
+                        continue
+                    daily_path.append({
+                        "d": day_no,
+                        "date": snap.get("date", ""),
+                        "close": round(close_x, 4),
+                        "high": round(high_x, 4),
+                        "low": round(low_x, 4),
+                        "prev_close": rx.get("prev_close"),
+                        "daily_return_pct": rx.get("daily_return_pct"),
+                        "intraday_high_return_pct": rx.get("intraday_high_return_pct"),
+                        "ma5": rx.get("ma5"),
+                        "ma10": rx.get("ma10"),
+                        "ma20": rx.get("ma20"),
+                        "ma240": rx.get("ma240"),
+                        "volume_lots": rx.get("volume_lots"),
+                        "volume20_avg_lots": rx.get("volume20_avg_lots"),
+                        "volume_ratio_vs_d0": round(vol_x / d0_vol, 4) if d0_vol > 0 else None,
+                        "volume_contract_vs_d0": bool(d0_vol > 0 and vol_x < d0_vol),
+                        "close_vs_d0_pct": round((close_x / d0_close_num - 1) * 100, 4) if d0_close_num > 0 else None,
+                        "low_above_d0_low": bool(d0_low_num > 0 and low_x >= d0_low_num),
+                        "close_above_d0_midpoint": bool(d0_mid_num > 0 and close_x >= d0_mid_num),
+                        "limit_up_price": rx.get("limit_up_price"),
+                        "limit_up_close": bool(rx.get("limit_up_close", False)),
+                        "limit_up_touched": bool(rx.get("limit_up_touched", False)),
+                        "conditions": rx.get("conditions") or {},
+                    })
+                except Exception:
+                    continue
+            sig["daily_path"] = daily_path
+            sig["record_through_d"] = record_through_d
+
             if i + 1 >= len(snaps):
                 signals.append(sig)
                 continue
@@ -321,6 +376,15 @@ def rebuild_signals_and_stats(cfg, generated_at):
                         "close": round(c, 4),
                         "high": round(float(rx.get("high", c) or c), 4),
                         "low": round(float(rx.get("low", c) or c), 4),
+                        "volume_lots": rx.get("volume_lots"),
+                        "volume20_avg_lots": rx.get("volume20_avg_lots"),
+                        "ma5": rx.get("ma5"),
+                        "ma10": rx.get("ma10"),
+                        "ma20": rx.get("ma20"),
+                        "ma240": rx.get("ma240"),
+                        "daily_return_pct": rx.get("daily_return_pct"),
+                        "limit_up_close": bool(rx.get("limit_up_close", False)),
+                        "limit_up_touched": bool(rx.get("limit_up_touched", False)),
                     })
                 except Exception:
                     continue
@@ -404,6 +468,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
         "generated_at": generated_at,
         "basis": "support_close",
         "window_trading_days": tracking_days,
+        "raw_signal_path": f"D0-D{record_through_d}",
         "config": cfg,
         "groups": groups,
     }
