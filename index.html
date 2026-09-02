@@ -31,7 +31,7 @@
 .ltable tr.active{background:#153653}
 
 .statsScroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:12px}.statsTable{width:100%;min-width:620px;border-collapse:collapse;font-size:13px}.statsTable th,.statsTable td{padding:12px 9px;border-bottom:1px solid var(--l);text-align:right;white-space:nowrap}.statsTable th:first-child,.statsTable td:first-child{text-align:left;min-width:180px}.statsTable tbody tr:first-child{background:#153653}.statsTable .pos{color:var(--g);font-weight:900}.statsTable .neg{color:var(--r);font-weight:900}.statsTable .countCell{font-weight:900}
-</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V4.1・提醒同步版</div>
+</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V4.2・提醒同步穩定版</div>
 <div class=tabs><div class="tab on" data-p=f>資金總覽</div><div class=tab data-p=l>正2策略</div><div class=tab data-p=s>個股</div><div class=tab data-p=a>統計分析</div></div>
 <section id=f class="page on">
 <div class=card><h2>資金總覽</h2><div class=hint>持股資訊由正2與個股頁自動彙總。</div><label class=m>目前可動用總資金（含持股市值）</label><input id=capital type=number placeholder="2500000"><div class=grid><div class=metric>正2目標 30%<b id=t30>—</b></div><div class=metric>單一個股 20%<b id=t20>—</b></div><div class=metric>個股上限 40%<b id=t40>—</b></div><div class=metric>預估可用現金<b id=fCash>—</b></div></div></div>
@@ -134,15 +134,23 @@ let syncCfg={token:'',consent:false},syncTimer=null;
 try{const raw=localStorage.getItem(STATE_KEY);if(raw)st={...st,...JSON.parse(raw)}}catch(e){}
 try{const raw=localStorage.getItem(SYNC_KEY);if(raw)syncCfg={...syncCfg,...JSON.parse(raw)}}catch(e){}
 if(!Array.isArray(st.buys))st.buys=[];if(!Array.isArray(st.sales))st.sales=[];
-function save(){try{localStorage.setItem(STATE_KEY,JSON.stringify(st))}catch(e){console.warn('localStorage save failed',e)}schedulePortfolioSync()}
+function save(doSync=false){try{localStorage.setItem(STATE_KEY,JSON.stringify(st))}catch(e){console.warn('localStorage save failed',e)}if(doSync)schedulePortfolioSync()}
 function syncStatus(msg,ok){const e=$('syncStatus');if(!e)return;e.className=ok===true?'status ok':ok===false?'status bad':'empty';e.textContent=msg}
-function saveSyncSettings(){syncCfg.token=($('ghToken')?.value||'').trim();syncCfg.consent=!!$('syncConsent')?.checked;try{localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg))}catch(e){};if(!syncCfg.token){syncStatus('尚未輸入 GitHub Token。',false);return}if(!syncCfg.consent){syncStatus('尚未勾選公開持倉摘要同意。',false);return}syncStatus('同步設定已儲存，之後持倉異動會自動同步。',true);syncPortfolio(true)}
+function saveSyncSettings(){syncCfg.token=($('ghToken')?.value||'').trim();syncCfg.consent=!!$('syncConsent')?.checked;try{localStorage.setItem(SYNC_KEY,JSON.stringify(syncCfg))}catch(e){};if(!syncCfg.token){syncStatus('尚未輸入 GitHub Token。',false);return}if(!syncCfg.consent){syncStatus('尚未勾選公開持倉摘要同意。',false);return}syncStatus('同步設定已儲存；實際持倉異動後會自動同步，也可手動立即同步。',true)}
 function schedulePortfolioSync(){if(!syncCfg.token||!syncCfg.consent)return;clearTimeout(syncTimer);syncTimer=setTimeout(()=>syncPortfolio(false),2500)}
 function portfolioSnapshot(){
  const cap=+st.capital||0,l=levState();let levLots=0,levCost=0;l.buys.forEach(x=>{levLots+=+x.lots||0;levCost+=(+x.price||0)*(+x.lots||0)*1000});const levAvg=levLots?levCost/(levLots*1000):null;
  const codes=[...new Set(st.buys.map(x=>x.c))].filter(c=>rem(c)>0);
  const holdings=codes.map(c=>{const i=I(c),lots=rem(c),a=avg(c),p=P(c);return{code:c,name:i.name||'',lots,avg_cost:Number.isFinite(a)?a:null,latest_price:Number.isFinite(p)?p:null,ma5:Number.isFinite(+i.ma5)?+i.ma5:null,ma10:Number.isFinite(+i.ma10)?+i.ma10:null};});
  return{updated_at:new Date().toISOString(),capital:cap,leveraged:{code:'00631L',lots:levLots,avg_cost:levAvg,latest_price:+l.price||null,peak_index:+l.peak||null,taiex:+l.index||null},holdings};
+}
+async function ghFetch(url,opt={},tries=3){
+ let last;
+ for(let n=1;n<=tries;n++){
+  try{return await fetch(url,{...opt,cache:'no-store'})}
+  catch(e){last=e;if(n<tries)await new Promise(ok=>setTimeout(ok,700*n))}
+ }
+ throw new Error('GitHub 連線失敗・'+(last?.message||'Load failed'));
 }
 async function syncPortfolio(manual){
  if(!syncCfg.token||!syncCfg.consent){if(manual)syncStatus('請先輸入 Token 並勾選同意。',false);return}
@@ -156,15 +164,15 @@ async function syncPortfolio(manual){
   let last='';
   for(let attempt=1;attempt<=3;attempt++){
    let sha=null;
-   const g=await fetch(api+'?ref='+encodeURIComponent(GH_BRANCH)+'&_='+Date.now(),{headers:{...h,'Cache-Control':'no-cache'}});
+   const g=await ghFetch(api+'?ref='+encodeURIComponent(GH_BRANCH)+'&_='+Date.now(),{headers:{...h}},3);
    if(g.ok){const j=await g.json();sha=j.sha}
    else if(g.status!==404){let x={};try{x=await g.json()}catch{};throw new Error(`讀取 GitHub 失敗 HTTP ${g.status}${x.message?'・'+x.message:''}`)}
    const body={message:'Sync portfolio reminder state',content,branch:GH_BRANCH};if(sha)body.sha=sha;
-   const r=await fetch(api,{method:'PUT',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify(body)});
+   const r=await ghFetch(api,{method:'PUT',headers:{...h,'Content-Type':'application/json'},body:JSON.stringify(body)},3);
    if(r.ok){syncStatus('同步成功・'+new Date().toLocaleString('zh-TW'),true);return}
    let x={};try{x=await r.json()}catch{};last=`HTTP ${r.status}${x.message?'・'+x.message:''}`;
    if(r.status!==409)throw new Error('寫入 GitHub 失敗 '+last);
-   await new Promise(ok=>setTimeout(ok,700*attempt));
+   await new Promise(ok=>setTimeout(ok,900*attempt));
   }
   throw new Error('寫入 GitHub 失敗 '+last);
  }catch(e){console.warn(e);syncStatus(String(e.message||e),false)}
@@ -178,7 +186,7 @@ function levState(){
 function saveLeveragedPeak(){
  const l=levState();
  l.peak=+$('lPeak').value||0;
- save();
+ save(true);
  renderLeveraged();
 }
 async function refreshLeveragedMarket(){
@@ -200,11 +208,11 @@ function addLeveragedBuy(){
  const l=levState(),p=+$('lBuyPrice').value||0,q=+$('lBuyLots').value||0;
  if(p<=0||q<=0){alert('請輸入買入價與張數');return}
  l.buys.push({price:p,lots:q,date:new Date().toISOString().slice(0,10)});
- l.draft_price='';l.draft_lots='';save();renderLeveraged();render();
+ l.draft_price='';l.draft_lots='';save(true);renderLeveraged();render();
 }
 function delLeveragedBuy(i){
  levState().buys.splice(i,1);
- save();
+ save(true);
  renderLeveraged();render();
 }
 function renderLeveraged(){
@@ -338,8 +346,8 @@ if(lbl)lbl.addEventListener('input',e=>{levState().draft_lots=e.target.value;sav
 async function load(){$('scanStatus').textContent='載入全市場資料中…';$('scanMeta').textContent='—';try{const [d,m,cfg]=await Promise.all([fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('stocks.json HTTP '+r.status);return r.json()}),fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),fetch('strategy_config.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]);db=d||{};meta=m||{};strategyConfig={...strategyConfig,...(meta.strategy_config||{}),...(cfg||{})};$('scanStatus').textContent='全市場資料已載入';const cnt=Object.keys(db).length;$('scanMeta').textContent=`有效 ${cnt.toLocaleString('zh-TW')} 檔${meta.generated_at?'・更新 '+meta.generated_at:''}・放量門檻 ${N(+strategyConfig.volume_multiplier)}倍`}catch(e){db={};meta={};$('scanStatus').textContent='資料載入失敗';$('scanMeta').textContent=String(e.message||e)}render()}
 function I(c){return db[c]||{}} function P(c){return +I(c).price} function rem(c){return st.buys.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)-st.sales.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)}
 function avg(c){let a=st.buys.filter(x=>x.c==c),l=a.reduce((s,x)=>s+x.l,0);return l?a.reduce((s,x)=>s+x.p*x.l,0)/l:NaN}
-function buy(){let c=$('bc').value.trim().toUpperCase(),p=+$('bp').value,l=+$('bl').value;if(!c||p<=0||l<=0){alert('請輸入股票代號、買入價與張數');return}if(Object.keys(db).length&& !db[c]){alert('目前掃描資料找不到 '+c+'，請確認股票代號');return}st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save();$('bc').value=$('bp').value=$('bl').value='';render();alert('已新增 '+c+' 持股，狀況已顯示在下方。')}function wb(c){let p=+prompt(c+' 實際買入價？'),l=+prompt('買入張數？');if(p>0&&l>0){st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save();render()}}
-function sell(c){let p=+prompt(c+' 實際賣出價？'),l=+prompt('賣出張數？目前剩 '+N(rem(c))+' 張');if(p>0&&l>0&&l<=rem(c)){st.sales.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save();render()}}
+function buy(){let c=$('bc').value.trim().toUpperCase(),p=+$('bp').value,l=+$('bl').value;if(!c||p<=0||l<=0){alert('請輸入股票代號、買入價與張數');return}if(Object.keys(db).length&& !db[c]){alert('目前掃描資料找不到 '+c+'，請確認股票代號');return}st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save(true);$('bc').value=$('bp').value=$('bl').value='';render();alert('已新增 '+c+' 持股，狀況已顯示在下方。')}function wb(c){let p=+prompt(c+' 實際買入價？'),l=+prompt('買入張數？');if(p>0&&l>0){st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save(true);render()}}
+function sell(c){let p=+prompt(c+' 實際賣出價？'),l=+prompt('賣出張數？目前剩 '+N(rem(c))+' 張');if(p>0&&l>0&&l<=rem(c)){st.sales.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save(true);render()}}
 function status(c){let i=I(c),p=P(c),a=avg(c),r=(p/a-1)*100,m5=+i.ma5,m10=+i.ma10;if(Number.isFinite(m10)&&p<m10)return['全部出清','red','跌破10日線'];if(Number.isFinite(m5)&&p<m5)return['出清一半','orange','跌破5日線'];if(Number.isFinite(r)&&r>=20)return['出清一半','orange','獲利達 +20%'];if(Number.isFinite(r)&&r>=15)return['接近半出','yellow','獲利達 +15%'];return['持有','green','未達出場條件']}
 function dif(p,m){if(!Number.isFinite(p)||!Number.isFinite(m))return'—';let d=p-m;return`${d>=0?'+':''}${N(d)} / ${d>=0?'+':''}${(d/m*100).toFixed(2)}%`}
 function conds(i){
