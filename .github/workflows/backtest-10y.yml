@@ -1,0 +1,28 @@
+name: Backtest 10 Years
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: Backtest years
+        required: true
+        default: '10'
+permissions:
+  contents: write
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run 10-year exploratory backtest
+        run: python backtest_10y.py --years "${{ github.event.inputs.years || '10' }}" --workers 12 --out backtest_10y.json
+      - name: Commit result
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add backtest_10y.json
+          git diff --cached --quiet || git commit -m "Update 10-year strategy backtest"
+          git push
