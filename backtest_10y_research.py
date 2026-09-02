@@ -83,7 +83,7 @@ def enrich(rows):
 
 def compact(r):
     m=[r.get("ma5"),r.get("ma10"),r.get("ma20")]
-    return all(x and x>0 for x in m) and (max(m)-min(m))/min(m)<=.03
+    return all(x and x>0 for x in m) and (max(m)-min(m))/min(m)<=.05
 
 
 COMPACT_THRESHOLDS=(0.02,0.03,0.04,0.05)
