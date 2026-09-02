@@ -11,7 +11,7 @@ TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"}
 DEFAULT_CONFIG = {
-    "version": "2026-09-02.4",
+    "version": "2026-09-02.5",
     "compact_ma_pct": 0.05,
     "min_avg_volume_lots": 10000,
     "volume_multiplier": 2.0,
@@ -235,7 +235,16 @@ def rebuild_signals_and_stats(cfg, generated_at):
 
     def mother_filter(rec):
         c = evaluate_conditions(rec, cfg)
-        return bool(c[0] and c[4])  # MA5/10/20 + price compact <=5%, price above all three
+        daily_ret = rec.get("daily_return_pct")
+        if daily_ret is None:
+            try:
+                px = float(rec.get("price", 0) or 0)
+                prev = float(rec.get("prev_close", 0) or 0)
+                daily_ret = (px / prev - 1) * 100 if px > 0 and prev > 0 else None
+            except Exception:
+                daily_ret = None
+        # D0 必須是上漲日；下跌剛好落入均線糾結區不算突破。
+        return bool(c[0] and c[4] and daily_ret is not None and float(daily_ret) > 0)
 
     def combo_bits(rec, market_filter):
         cond = rec.get("conditions") or {}
@@ -467,7 +476,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
             "time_stop": "買入後滿10個交易日仍未曾達+20%，全部出清"
         },
         "raw_signal_path": f"D0-D{record_through_d}",
-        "mother_filter": "MA5/MA10/MA20與股價糾結<=5%，且股價突破站上MA5/MA10/MA20",
+        "mother_filter": "MA5/MA10/MA20與股價糾結<=5%，股價突破站上MA5/MA10/MA20，且D0當日必須上漲",
         "scenario_names": scenario_names,
         "config": cfg,
         "combination_stats": combo_rows,
@@ -509,7 +518,15 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
     candidates = []
     for code, rec in results.items():
         conds = rec.get("conditions") or {}
-        if not (bool(conds.get("compact_ma")) and bool(conds.get("breakout"))):
+        daily_ret = rec.get("daily_return_pct")
+        if daily_ret is None:
+            try:
+                px = float(rec.get("price", 0) or 0)
+                prev = float(rec.get("prev_close", 0) or 0)
+                daily_ret = (px / prev - 1) * 100 if px > 0 and prev > 0 else None
+            except Exception:
+                daily_ret = None
+        if not (bool(conds.get("compact_ma")) and bool(conds.get("breakout")) and daily_ret is not None and float(daily_ret) > 0):
             continue
         gid = group_for(rec, cfg)
         bits = [
@@ -569,6 +586,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
         scenario_rank = rank_lookup.get(scenario_key) if scenario_key in top5_keys else None
         if scenario_key not in top5_keys:
             continue
+        matched_stat = next((r for r in stats_rows if r.get("scenario") == scenario and r.get("combo_id") == cid), {})
         support_candidates.append({
             "code": sig.get("code"),
             "name": sig.get("name", ""),
@@ -580,6 +598,11 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
             "scenario": scenario,
             "scenario_name": (stats.get("scenario_names") or {}).get(scenario) if scenario else None,
             "stats_rank": scenario_rank,
+            "avg_max_up_pct": matched_stat.get("avg_max_up_pct"),
+            "avg_max_down_pct": matched_stat.get("avg_max_down_pct"),
+            "avg_final_pct": matched_stat.get("avg_final_pct"),
+            "win_rate_pct": matched_stat.get("win_rate_pct"),
+            "samples": matched_stat.get("samples", 0),
             "status": status,
             "d0_date": sig.get("d0_date"),
             "d0_close": sig.get("d0_close"),
@@ -629,7 +652,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
     }
 
     out = {
-        "schema_version": "2026-09-02.4",
+        "schema_version": "2026-09-02.5",
         "generated_at": generated_at,
         "strategy_config": cfg,
         "market_filter": market_filter,

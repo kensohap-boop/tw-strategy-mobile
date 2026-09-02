@@ -108,7 +108,7 @@
 <div class=card><h2>大盤濾網</h2><div class=hint>先判斷今天是否適合查看個股進場訊號。</div><div id=marketFilterBox class=empty>讀取大盤資料中…</div></div>
 <div class=card><h2>已買入個股</h2><div class=hint>系統判斷出場訊號；只有你輸入實際賣出後才扣除持股。</div>
 <div class=grid><input id=bc placeholder="股票代號"><input id=bp type=number step=.01 placeholder="買入價"><input id=bl type=number step=.001 placeholder="張數"><button onclick=buy()>＋新增買入</button></div><div id=holds></div></div>
-<div class=card><h2>今日篩選</h2><div class=hint>每天掃描上市＋上櫃，直接從 stocks.json 依六項條件自動分類。點股票名稱可看完整數值。</div><div class=scanbar><div><b id=scanStatus>載入全市場資料中…</b><div class=small id=scanMeta>—</div></div><button class=refresh onclick=load()>重新整理</button></div><div id=watchs></div></div>
+<div class=card><h2>今日推薦個股</h2><div class=hint>與下午 1:00 通知使用同一份推薦清單。只顯示符合全體 TOP 5 統計結果的標的，最多 10 檔；突破當日必須是上漲日。</div><div class=scanbar><div><b id=scanStatus>載入今日推薦中…</b><div class=small id=scanMeta>—</div></div><button class=refresh onclick=load()>重新整理</button></div><div id=watchs></div></div>
 </section>
 <section id=a class=page>
 <div class=card>
@@ -123,7 +123,7 @@
 const $=x=>document.getElementById(x),N=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—',M=n=>Number.isFinite(n)?'NT$ '+Math.round(n).toLocaleString('zh-TW'):'—';
 const STATE_KEY='tw26real',SYNC_KEY='tw26sync';
 const GH_OWNER='kensohap-boop',GH_REPO='tw-strategy-mobile',GH_BRANCH='main',PORTFOLIO_FILE='portfolio_state.json';
-let st={capital:2500000,buys:[],sales:[]},db={},meta={},marketLive={},statsData={},strategyConfig={compact_ma_pct:.05,min_avg_volume_lots:10000,volume_multiplier:2,support_max_gap_pct:.05,tracking_days:12,record_through_d:13};
+let st={capital:2500000,buys:[],sales:[]},db={},meta={},marketLive={},statsData={},reminderData={},strategyConfig={compact_ma_pct:.05,min_avg_volume_lots:10000,volume_multiplier:2,support_max_gap_pct:.05,tracking_days:12,record_through_d:13};
 let syncCfg={token:'',consent:false},syncTimer=null;
 try{const raw=localStorage.getItem(STATE_KEY);if(raw)st={...st,...JSON.parse(raw)}}catch(e){}
 try{const raw=localStorage.getItem(SYNC_KEY);if(raw)syncCfg={...syncCfg,...JSON.parse(raw)}}catch(e){}
@@ -338,7 +338,27 @@ const lp=$('lPeak'),lbp=$('lBuyPrice'),lbl=$('lBuyLots');
 if(lp)lp.addEventListener('input',e=>{levState().peak=+e.target.value||0;save();renderLeveraged()});
 if(lbp)lbp.addEventListener('input',e=>{levState().draft_price=e.target.value;save()});
 if(lbl)lbl.addEventListener('input',e=>{levState().draft_lots=e.target.value;save()});
-async function load(){$('scanStatus').textContent='載入全市場資料中…';$('scanMeta').textContent='—';try{const [d,m,cfg,mk]=await Promise.all([fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('stocks.json HTTP '+r.status);return r.json()}),fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),fetch('strategy_config.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),fetch('market.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]);db=d||{};meta=m||{};marketLive=mk||{};strategyConfig={...strategyConfig,...(meta.strategy_config||{}),...(cfg||{})};$('scanStatus').textContent='全市場資料已載入';const cnt=Object.keys(db).length;$('scanMeta').textContent=`有效 ${cnt.toLocaleString('zh-TW')} 檔${meta.generated_at?'・更新 '+meta.generated_at:''}・放量門檻 ${N(+strategyConfig.volume_multiplier)}倍`}catch(e){db={};meta={};marketLive={};$('scanStatus').textContent='資料載入失敗';$('scanMeta').textContent=String(e.message||e)}render()}
+async function load(){
+ $('scanStatus').textContent='載入今日推薦中…';$('scanMeta').textContent='—';
+ try{
+  const [d,m,cfg,mk,rem]=await Promise.all([
+   fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('stocks.json HTTP '+r.status);return r.json()}),
+   fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),
+   fetch('strategy_config.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),
+   fetch('market.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),
+   fetch('reminder.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))
+  ]);
+  db=d||{};meta=m||{};marketLive=mk||{};reminderData=rem||{};
+  strategyConfig={...strategyConfig,...(meta.strategy_config||{}),...(cfg||{})};
+  const arr=Array.isArray(reminderData.support_candidates)?reminderData.support_candidates.slice(0,10):[];
+  $('scanStatus').textContent=`今日推薦 ${arr.length} 檔`;
+  $('scanMeta').textContent=`與 13:00 通知同源${reminderData.generated_at?'・更新 '+reminderData.generated_at:''}・只取全體 TOP 5 統計結果`;
+ }catch(e){
+  db={};meta={};marketLive={};reminderData={};
+  $('scanStatus').textContent='資料載入失敗';$('scanMeta').textContent=String(e.message||e);
+ }
+ render();
+}
 function I(c){return db[c]||{}} function P(c){return +I(c).price} function rem(c){return st.buys.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)-st.sales.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)}
 function avg(c){let a=st.buys.filter(x=>x.c==c),l=a.reduce((s,x)=>s+x.l,0);return l?a.reduce((s,x)=>s+x.p*x.l,0)/l:NaN}
 function buy(){let c=$('bc').value.trim().toUpperCase(),p=+$('bp').value,l=+$('bl').value;if(!c||p<=0||l<=0){alert('請輸入股票代號、買入價與張數');return}if(Object.keys(db).length&& !db[c]){alert('目前掃描資料找不到 '+c+'，請確認股票代號');return}st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save(true);$('bc').value=$('bp').value=$('bl').value='';render();alert('已新增 '+c+' 持股，狀況已顯示在下方。')}function wb(c){let p=+prompt(c+' 實際買入價？'),l=+prompt('買入張數？');if(p>0&&l>0){st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save(true);render()}}
@@ -365,7 +385,7 @@ function openDetail(c){
  ['年線：股價在年線之上',cs[1]],
  ['多頭：MA5 > MA10 > MA20',cs[2]],
  ['成交量：20日平均量 > '+N(+strategyConfig.min_avg_volume_lots)+'張',cs[3]],
- ['突破：現價高於 MA5/10/20',cs[4]],
+ ['突破：股價站上 MA5/10/20（D0另要求當日上漲）',cs[4]],
  ['放量：今日量 > 20日均量 '+N(+strategyConfig.volume_multiplier)+'倍',cs[5]]
  ];
  $('detailTitle').textContent=c+' '+(i.name||'');
@@ -407,8 +427,36 @@ const GROUPS=[
 {id:'F',name:'⑥ 5/6・僅均線糾結未過',desc:'只有現價/MA5/10/20 未落在 5% 內',test:c=>!c[0]&&c[1]&&c[2]&&c[3]&&c[4]&&c[5]}
 ];
 function scannerGroups(){const groups=Object.fromEntries(GROUPS.map(g=>[g.id,[]]));Object.entries(db).forEach(([c,i])=>{const cs=conds(i),g=GROUPS.find(x=>x.test(cs));if(g)groups[g.id].push([c,i,cs])});GROUPS.forEach(g=>groups[g.id].sort((a,b)=>(+b[1].volume20_avg_lots||0)-(+a[1].volume20_avg_lots||0)));return groups}
-function renderScanner(){const heads=['均線','年線','多頭','成交量','突破','放量'],groups=scannerGroups(),total=GROUPS.reduce((s,g)=>s+groups[g.id].length,0);let html=`<div class=small>本日列入比較組：${total} 檔</div>`;GROUPS.forEach(g=>{const arr=groups[g.id];html+=`<div class=group><div class=gtitle><div><div class=gname>${g.name}</div><div class=gdesc>${g.desc}</div></div><span class=count>${arr.length}</span></div>`;if(!arr.length){html+=`<div class=empty>本組今日無標的</div></div>`;return}html+=`<div class=watchhead><span>股票</span>${heads.map(x=>`<span>${x}</span>`).join('')}<span></span></div>`;html+=arr.map(([c,i,vals])=>`<div class=watchrow><div class=watchname onclick="openDetail('${c}')">${c} ${i.name||''}<span class=market>${i.market||''}</span></div>${vals.map(v=>`<span class="light ${v?'on':'off'}"></span>`).join('')}<button class=iconbtn onclick="openDetail('${c}')">›</button></div>`).join('');html+=`</div>`});$('watchs').innerHTML=html}
-
+function renderScanner(){
+ const arr=Array.isArray(reminderData?.support_candidates)?reminderData.support_candidates.slice(0,10):[];
+ const p=v=>(v!==null&&v!==''&&Number.isFinite(Number(v)))?`${Number(v)>=0?'+':''}${Number(v).toFixed(2)}%`:'—';
+ if(!arr.length){
+   $('watchs').innerHTML='<div class=empty>目前沒有符合全體 TOP 5 統計結果的今日推薦標的。若 12:50 掃描尚未完成，請稍後重新整理。</div>';
+   return;
+ }
+ $('watchs').innerHTML=arr.map((x,i)=>{
+   const code=x.code||'', name=x.name||'', rank=x.stats_rank||'—';
+   const mf=x.market_filter_on!==false;
+   return `<div class=item>
+    <div class=head>
+      <div><div class=nm>#${i+1}　${code} ${name}</div>
+      <div class=m>${x.scenario_name||x.scenario||'—'}・TOP ${rank}・${mf?'大盤濾網 ON':'大盤濾網 OFF'}</div></div>
+      <span class="badge ${mf?'green':'red'}">${mf?'可列入考慮':'暫不買進'}</span>
+    </div>
+    <div class=stats>
+      <div class=mini>最新價<b>${Number.isFinite(+x.latest_price)?'$'+N(+x.latest_price):'—'}</b></div>
+      <div class=mini>MA5<b>${Number.isFinite(+x.latest_ma5)?N(+x.latest_ma5):'—'}</b></div>
+      <div class=mini>D0 半K<b>${Number.isFinite(+x.d0_midpoint)?N(+x.d0_midpoint):'—'}</b></div>
+      <div class=mini>平均最大漲幅<b>${p(x.avg_max_up_pct)}</b></div>
+      <div class=mini>平均最大跌幅<b>${p(x.avg_max_down_pct)}</b></div>
+      <div class=mini>10日平均漲跌幅<b>${p(x.avg_final_pct)}</b></div>
+      <div class=mini>勝率（曾達+20%）<b>${p(x.win_rate_pct)}</b></div>
+      <div class=mini>樣本數<b>${x.samples??0}</b></div>
+    </div>
+    <div class=actions><button onclick="openDetail('${code}')">查看資料</button><button onclick="wb('${code}')">＋登記實際買入</button></div>
+   </div>`;
+ }).join('');
+}
 function render(){renderMarketFilter();let cap=+st.capital||0;$('t30').textContent=M(cap*.3);$('t20').textContent=M(cap*.2);$('t40').textContent=M(cap*.4);
 let codes=[...new Set(st.buys.map(x=>x.c))].filter(c=>rem(c)>0),stockValue=0,stockCost=0;
 codes.forEach(c=>{let p=P(c),a=avg(c),r=rem(c);if(Number.isFinite(p))stockValue+=p*r*1000;if(Number.isFinite(a))stockCost+=a*r*1000});
