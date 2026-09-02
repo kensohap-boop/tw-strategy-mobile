@@ -128,7 +128,7 @@
 const $=x=>document.getElementById(x),N=n=>Number.isFinite(n)?n.toLocaleString('zh-TW',{maximumFractionDigits:2}):'—',M=n=>Number.isFinite(n)?'NT$ '+Math.round(n).toLocaleString('zh-TW'):'—';
 const STATE_KEY='tw26real',SYNC_KEY='tw26sync';
 const GH_OWNER='kensohap-boop',GH_REPO='tw-strategy-mobile',GH_BRANCH='main',PORTFOLIO_FILE='portfolio_state.json';
-let st={capital:2500000,buys:[],sales:[]},db={},meta={},statsData={},strategyConfig={compact_ma_pct:.05,min_avg_volume_lots:10000,volume_multiplier:2,support_max_gap_pct:.05,tracking_days:10};
+let st={capital:2500000,buys:[],sales:[]},db={},meta={},marketLive={},statsData={},strategyConfig={compact_ma_pct:.05,min_avg_volume_lots:10000,volume_multiplier:2,support_max_gap_pct:.05,tracking_days:10};
 let syncCfg={token:'',consent:false},syncTimer=null;
 try{const raw=localStorage.getItem(STATE_KEY);if(raw)st={...st,...JSON.parse(raw)}}catch(e){}
 try{const raw=localStorage.getItem(SYNC_KEY);if(raw)syncCfg={...syncCfg,...JSON.parse(raw)}}catch(e){}
@@ -352,7 +352,7 @@ const lp=$('lPeak'),lbp=$('lBuyPrice'),lbl=$('lBuyLots');
 if(lp)lp.addEventListener('input',e=>{levState().peak=+e.target.value||0;save();renderLeveraged()});
 if(lbp)lbp.addEventListener('input',e=>{levState().draft_price=e.target.value;save()});
 if(lbl)lbl.addEventListener('input',e=>{levState().draft_lots=e.target.value;save()});
-async function load(){$('scanStatus').textContent='載入全市場資料中…';$('scanMeta').textContent='—';try{const [d,m,cfg]=await Promise.all([fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('stocks.json HTTP '+r.status);return r.json()}),fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),fetch('strategy_config.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]);db=d||{};meta=m||{};strategyConfig={...strategyConfig,...(meta.strategy_config||{}),...(cfg||{})};$('scanStatus').textContent='全市場資料已載入';const cnt=Object.keys(db).length;$('scanMeta').textContent=`有效 ${cnt.toLocaleString('zh-TW')} 檔${meta.generated_at?'・更新 '+meta.generated_at:''}・放量門檻 ${N(+strategyConfig.volume_multiplier)}倍`}catch(e){db={};meta={};$('scanStatus').textContent='資料載入失敗';$('scanMeta').textContent=String(e.message||e)}render()}
+async function load(){$('scanStatus').textContent='載入全市場資料中…';$('scanMeta').textContent='—';try{const [d,m,cfg,mk]=await Promise.all([fetch('stocks.json?t='+Date.now(),{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('stocks.json HTTP '+r.status);return r.json()}),fetch('stocks_meta.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),fetch('strategy_config.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({})),fetch('market.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():{}).catch(()=>({}))]);db=d||{};meta=m||{};marketLive=mk||{};strategyConfig={...strategyConfig,...(meta.strategy_config||{}),...(cfg||{})};$('scanStatus').textContent='全市場資料已載入';const cnt=Object.keys(db).length;$('scanMeta').textContent=`有效 ${cnt.toLocaleString('zh-TW')} 檔${meta.generated_at?'・更新 '+meta.generated_at:''}・放量門檻 ${N(+strategyConfig.volume_multiplier)}倍`}catch(e){db={};meta={};marketLive={};$('scanStatus').textContent='資料載入失敗';$('scanMeta').textContent=String(e.message||e)}render()}
 function I(c){return db[c]||{}} function P(c){return +I(c).price} function rem(c){return st.buys.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)-st.sales.filter(x=>x.c==c).reduce((a,x)=>a+x.l,0)}
 function avg(c){let a=st.buys.filter(x=>x.c==c),l=a.reduce((s,x)=>s+x.l,0);return l?a.reduce((s,x)=>s+x.p*x.l,0)/l:NaN}
 function buy(){let c=$('bc').value.trim().toUpperCase(),p=+$('bp').value,l=+$('bl').value;if(!c||p<=0||l<=0){alert('請輸入股票代號、買入價與張數');return}if(Object.keys(db).length&& !db[c]){alert('目前掃描資料找不到 '+c+'，請確認股票代號');return}st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save(true);$('bc').value=$('bp').value=$('bl').value='';render();alert('已新增 '+c+' 持股，狀況已顯示在下方。')}function wb(c){let p=+prompt(c+' 實際買入價？'),l=+prompt('買入張數？');if(p>0&&l>0){st.buys.push({c,p,l,d:new Date().toLocaleDateString('zh-TW')});save(true);render()}}
@@ -407,7 +407,9 @@ function renderMarketFilter(){
  if(!m){box.className='empty';box.innerHTML='目前 stocks_meta.json 尚未包含大盤均線。下一次執行新版掃描後會自動顯示。';return}
  const on=!!m.filter_on;
  box.className='status '+(on?'ok':'bad');
- box.innerHTML=`<b>${on?'🟢 大盤濾網 ON・可以檢視個股進場訊號':'🔴 大盤濾網 OFF・暫停個股進場'}</b><div class=small style="margin-top:7px">MA5 ${N(+m.ma5)} ${m.bullish_ma?'＞ MA10 '+N(+m.ma10)+' ＞ MA20 '+N(+m.ma20)+' ✅':'／MA10 '+N(+m.ma10)+'／MA20 '+N(+m.ma20)+' ❌'}<br>指數 ${N(+m.price)} ${m.above_ma240?'＞':'≤'} MA240 ${N(+m.ma240)} ${m.above_ma240?'✅':'❌'}</div>${on?'':'<div class=small style="margin-top:6px">個股仍照常掃描、保存與統計，但不視為正式進場訊號。</div>'}`;
+ const liveIndex=Number.isFinite(+marketLive?.taiex?.price)?+marketLive.taiex.price:+m.price;
+ const liveUpdated=marketLive?.updated_at||marketLive?.taiex?.market_time||meta?.generated_at||'—';
+ box.innerHTML=`<b>${on?'🟢 大盤濾網 ON・可以檢視個股進場訊號':'🔴 大盤濾網 OFF・暫停個股進場'}</b><div class=small style="margin-top:7px"><b>目前大盤指數 ${N(liveIndex)}</b><br>行情更新 ${liveUpdated}<br><br>MA5 ${N(+m.ma5)} ${m.bullish_ma?'＞ MA10 '+N(+m.ma10)+' ＞ MA20 '+N(+m.ma20)+' ✅':'／MA10 '+N(+m.ma10)+'／MA20 '+N(+m.ma20)+' ❌'}<br>濾網判斷指數 ${N(+m.price)} ${m.above_ma240?'＞':'≤'} MA240 ${N(+m.ma240)} ${m.above_ma240?'✅':'❌'}</div>${on?'':'<div class=small style="margin-top:6px">個股仍照常掃描、保存與統計，但不視為正式進場訊號。</div>'}`;
 }
 
 const GROUPS=[
