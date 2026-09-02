@@ -62,13 +62,15 @@ def get_universe():
     for r in fetch_json(TWSE_URL):
         code = str(r.get("Code", "")).strip()
         name = str(r.get("Name", "")).strip()
-        if code.isdigit() and len(code) == 4 and code not in seen:
+        # Individual-stock strategy: exclude ETF / fund-style 00xx codes.
+        if code.isdigit() and len(code) == 4 and not code.startswith("00") and code not in seen:
             seen.add(code)
             out.append((code, name, "TW"))
     for r in fetch_json(TPEX_URL):
         code = str(r.get("SecuritiesCompanyCode", "")).strip()
         name = str(r.get("CompanyName", "")).strip()
-        if code.isdigit() and len(code) == 4 and code not in seen:
+        # Individual-stock strategy: exclude ETF / fund-style 00xx codes.
+        if code.isdigit() and len(code) == 4 and not code.startswith("00") and code not in seen:
             seen.add(code)
             out.append((code, name, "TWO"))
     return out
