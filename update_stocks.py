@@ -11,7 +11,7 @@ TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"}
 DEFAULT_CONFIG = {
-    "version": "2026-09-02.10",
+    "version": "2026-09-02.11",
     "compact_ma_pct": 0.03,
     "min_avg_volume_lots": 10000,
     "volume_multiplier": 2.0,
@@ -591,36 +591,64 @@ def rebuild_signals_and_stats(cfg, generated_at):
     return signals, summary
 
 def build_reminder_json(cfg, generated_at, results, market_filter, signals, stats):
-    """Create one compact public file for the 13:00 / 20:00 reminders."""
+    """Create one compact public file for the 13:00 / 20:00 reminders.
+
+    V11: all active 320-combination statistics are exposed from the first sample,
+    while official TOP5 remains restricted to >=20 completed strategy samples.
+    Legacy A-F group labels are not emitted in reminder.json.
+    """
     portfolio = load_json("portfolio_state.json", {})
     market_data = load_json("market.json", {})
 
     rank_lookup = stats.get("rank_lookup") or {}
-    stats_rows = []
-    for row in (stats.get("global_top5") or []):
-        stats_rows.append({
+    top5_keys = set(stats.get("top5_keys") or [])
+    all_rows = stats.get("combination_stats") or []
+
+    def compact_stat(row):
+        key = f"{row.get('scenario')}:{row.get('combo_id')}"
+        n_complete = int(row.get("strategy_complete_samples", 0) or 0)
+        tier = row.get("confidence_tier") or ("正式統計" if n_complete >= 20 else ("初步統計" if n_complete >= 10 else "資料累積中"))
+        return {
             "scenario": row.get("scenario"),
             "scenario_name": row.get("scenario_name"),
-            "rank": row.get("rank"),
             "combo_id": row.get("combo_id"),
             "combo": row.get("combo"),
+            "rank": rank_lookup.get(key),
+            "official_top5": key in top5_keys,
+            "official_top5_eligible": n_complete >= 20,
+            "confidence_tier": tier,
             "avg_max_up_pct": row.get("avg_max_up_pct"),
             "avg_max_down_pct": row.get("avg_max_down_pct"),
             "avg_final_pct": row.get("avg_final_pct"),
-            "cumulative_pct": row.get("cumulative_pct"),
             "win_rate_pct": row.get("win_rate_pct"),
             "strategy_avg_return_pct": row.get("strategy_avg_return_pct"),
             "strategy_total_pnl_pct": row.get("strategy_total_pnl_pct"),
             "strategy_profit_rate_pct": row.get("strategy_profit_rate_pct"),
             "strategy_best_trade_pct": row.get("strategy_best_trade_pct"),
             "strategy_worst_trade_pct": row.get("strategy_worst_trade_pct"),
-            "strategy_complete_samples": row.get("strategy_complete_samples", 0),
-            "samples": row.get("samples", 0),
-        })
-    top5_keys = set(stats.get("top5_keys") or [])
+            "strategy_complete_samples": n_complete,
+            "samples": int(row.get("samples", 0) or 0),
+            "post_ma_break_recovery": row.get("post_ma_break_recovery") or {},
+        }
+
+    # Important: stats_ranking must NOT be empty merely because no combo has 20 samples yet.
+    # Surface every combination that has any observed signal/sample; official TOP5 is a separate flag.
+    stats_rows = [compact_stat(r) for r in all_rows if int(r.get("samples", 0) or 0) > 0 or int(r.get("strategy_complete_samples", 0) or 0) > 0]
+    tier_order = {"正式統計": 0, "初步統計": 1, "資料累積中": 2}
+    stats_rows.sort(key=lambda x: (
+        0 if x.get("official_top5") else 1,
+        tier_order.get(x.get("confidence_tier"), 9),
+        -(x.get("strategy_avg_return_pct") if x.get("strategy_avg_return_pct") is not None else -999999),
+        -int(x.get("strategy_complete_samples", 0) or 0),
+        -int(x.get("samples", 0) or 0),
+        x.get("scenario") or "", x.get("combo_id") or ""
+    ))
+    stat_map = {(r.get("scenario"), r.get("combo_id")): r for r in stats_rows}
 
     current_filter_on = bool((market_filter or {}).get("filter_on", False))
 
+    # D0 mother-filter candidates. No A-F labels. At D0 the S1-S5 scenario is not yet known,
+    # so attach the current statistics for all five possible scenarios of the same 6-bit combo.
     candidates = []
     for code, rec in results.items():
         conds = rec.get("conditions") or {}
@@ -634,7 +662,6 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
                 daily_ret = None
         if not (bool(conds.get("compact_ma")) and bool(conds.get("breakout")) and daily_ret is not None and float(daily_ret) > 0):
             continue
-        gid = group_for(rec, cfg)
         bits = [
             current_filter_on,
             bool(conds.get("above_ma240", False)),
@@ -644,15 +671,13 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
             bool(rec.get("limit_up_close", False)),
         ]
         cid = "".join("1" if x else "0" for x in bits)
+        scenario_stats = [stat_map[(sid, cid)] for sid in ("S1","S2","S3","S4","S5") if (sid, cid) in stat_map]
         candidates.append({
             "code": code,
             "name": rec.get("name", ""),
             "market": rec.get("market", ""),
-            "group": gid,
-            "group_name": GROUP_NAMES.get(gid, "母篩選"),
             "combo_id": cid,
             "market_filter_on": current_filter_on,
-            "stats_rank": None,
             "price": rec.get("price"),
             "high": rec.get("high"),
             "low": rec.get("low"),
@@ -663,16 +688,18 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
             "volume_lots": rec.get("volume_lots"),
             "volume20_avg_lots": rec.get("volume20_avg_lots"),
             "conditions": rec.get("conditions") or {},
+            "scenario_stats": scenario_stats,
         })
-    candidates.sort(key=lambda x: (x.get("stats_rank") or 999, x.get("group") or "Z", x.get("code") or ""))
+    candidates.sort(key=lambda x: (x.get("code") or ""))
 
+    # D1/D2 scenario candidates. Multiple scenarios can legitimately overlap (especially S4),
+    # so keep all matches and choose the statistically strongest one as the primary display scenario.
     support_candidates = []
     for sig in signals:
         status = sig.get("status")
         if status not in ("waiting_d1", "tracking"):
             continue
-        gid = sig.get("group")
-        filter_on = bool((sig.get("market_filter") or {}).get("filter_on", False))
+        cid = sig.get("combo_id")
         d0_close = float(sig.get("d0_close", 0) or 0)
         d0_high = float(sig.get("d0_high", d0_close) or d0_close)
         d0_low = float(sig.get("d0_low", d0_close) or d0_close)
@@ -682,54 +709,103 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
         live = results.get(sig.get("code")) or {}
         live_price = float(live.get("price", 0) or 0)
         live_ma5 = float(live.get("ma5", 0) or 0)
+        live_vol = float(live.get("volume_lots", 0) or 0)
+        live_vol20 = float(live.get("volume20_avg_lots", 0) or 0)
         live_limit = bool(live.get("limit_up_close", False))
         live_broken = live_price > 0 and ((live_ma5 > 0 and live_price < live_ma5) or (midpoint > 0 and live_price < midpoint))
         live_stable = live_price > 0 and live_ma5 > 0 and live_price >= live_ma5 and live_price >= midpoint and live_price <= d0_close * (1 + cfg["support_max_gap_pct"])
         live_too_high = bool(d0_close > 0 and live_price > d0_close * (1 + cfg["support_max_gap_pct"]) and not live_limit)
-        scenario = "S1" if live_limit else ("S2" if live_broken else ("S3" if live_stable else ("S5" if live_too_high else None)))
-        cid = sig.get("combo_id")
-        scenario_key = f"{scenario}:{cid}" if scenario and cid else None
-        scenario_rank = rank_lookup.get(scenario_key) if scenario_key in top5_keys else None
-        if scenario_key not in top5_keys:
+
+        matches = []
+        if live_limit:
+            matches.append("S1")
+        if live_broken:
+            matches.append("S2")
+        if live_stable:
+            matches.append("S3")
+        if live_too_high:
+            matches.append("S5")
+
+        # S4: D0 surge >2x 20d average, then first D1/D2 with volume < that day's 20d avg
+        # and close not below MA5 / D0 midpoint. The current live day can qualify.
+        d0_vol = float(sig.get("d0_volume_lots", 0) or 0)
+        d0_vol20 = float(sig.get("d0_volume20_avg_lots", 0) or 0)
+        d0_surge = d0_vol20 > 0 and d0_vol > 2.0 * d0_vol20
+        current_support = live_price > 0 and live_ma5 > 0 and live_price >= live_ma5 and live_price >= midpoint
+        current_contract = live_vol20 > 0 and live_vol < live_vol20
+        path = sig.get("daily_path") or []
+        current_d = max([int(x.get("d", 0) or 0) for x in path], default=0)
+        earlier_s4 = False
+        for x in path:
+            dnum = int(x.get("d", -1) or -1)
+            if dnum not in (1, 2) or dnum >= current_d:
+                continue
+            xv = float(x.get("volume_lots", 0) or 0)
+            xv20 = float(x.get("volume20_avg_lots", 0) or 0)
+            xc = float(x.get("close", 0) or 0)
+            xma5 = float(x.get("ma5", 0) or 0)
+            if d0_surge and xv20 > 0 and xv < xv20 and xc > 0 and xma5 > 0 and xc >= xma5 and xc >= midpoint:
+                earlier_s4 = True
+                break
+        if d0_surge and current_d in (1, 2) and current_contract and current_support and not earlier_s4:
+            matches.append("S4")
+
+        # Remove duplicates while preserving order.
+        matches = list(dict.fromkeys(matches))
+        if not matches:
             continue
-        matched_stat = next((r for r in stats_rows if r.get("scenario") == scenario and r.get("combo_id") == cid), {})
+        matched_stats = [stat_map[(sid, cid)] for sid in matches if (sid, cid) in stat_map]
+        def choice_key(r):
+            return (
+                0 if r.get("official_top5") else 1,
+                tier_order.get(r.get("confidence_tier"), 9),
+                -(r.get("strategy_avg_return_pct") if r.get("strategy_avg_return_pct") is not None else -999999),
+                -int(r.get("strategy_complete_samples", 0) or 0),
+            )
+        matched_stats.sort(key=choice_key)
+        primary = matched_stats[0] if matched_stats else {
+            "scenario": matches[0], "scenario_name": (stats.get("scenario_names") or {}).get(matches[0]),
+            "combo_id": cid, "confidence_tier": "資料累積中", "official_top5": False,
+            "strategy_complete_samples": 0, "samples": 0,
+        }
         support_candidates.append({
             "code": sig.get("code"),
             "name": sig.get("name", ""),
             "market": sig.get("market", ""),
-            "group": gid,
-            "group_name": sig.get("group_name", GROUP_NAMES.get(gid, gid)),
-            "market_filter_on": filter_on,
+            "market_filter_on": bool((sig.get("market_filter") or {}).get("filter_on", False)),
             "combo_id": cid,
-            "scenario": scenario,
-            "scenario_name": (stats.get("scenario_names") or {}).get(scenario) if scenario else None,
-            "stats_rank": scenario_rank,
-            "avg_max_up_pct": matched_stat.get("avg_max_up_pct"),
-            "avg_max_down_pct": matched_stat.get("avg_max_down_pct"),
-            "avg_final_pct": matched_stat.get("avg_final_pct"),
-            "win_rate_pct": matched_stat.get("win_rate_pct"),
-            "samples": matched_stat.get("samples", 0),
-            "strategy_complete_samples": matched_stat.get("strategy_complete_samples", 0),
-            "confidence_tier": matched_stat.get("confidence_tier", "資料累積中"),
-            "official_top5": is_official_top5,
-            "strategy_avg_return_pct": matched_stat.get("strategy_avg_return_pct"),
-            "strategy_profit_rate_pct": matched_stat.get("strategy_profit_rate_pct"),
-            "strategy_best_trade_pct": matched_stat.get("strategy_best_trade_pct"),
-            "strategy_worst_trade_pct": matched_stat.get("strategy_worst_trade_pct"),
+            "scenario": primary.get("scenario"),
+            "scenario_name": primary.get("scenario_name"),
+            "matching_scenarios": matches,
+            "matching_scenario_stats": matched_stats,
+            "stats_rank": primary.get("rank"),
+            "win_rate_pct": primary.get("win_rate_pct"),
+            "samples": primary.get("samples", 0),
+            "strategy_complete_samples": primary.get("strategy_complete_samples", 0),
+            "confidence_tier": primary.get("confidence_tier", "資料累積中"),
+            "official_top5": bool(primary.get("official_top5", False)),
+            "strategy_avg_return_pct": primary.get("strategy_avg_return_pct"),
+            "strategy_profit_rate_pct": primary.get("strategy_profit_rate_pct"),
+            "strategy_best_trade_pct": primary.get("strategy_best_trade_pct"),
+            "strategy_worst_trade_pct": primary.get("strategy_worst_trade_pct"),
+            "post_ma_break_recovery": primary.get("post_ma_break_recovery") or {},
             "status": status,
             "d0_date": sig.get("d0_date"),
             "d0_close": sig.get("d0_close"),
             "d0_midpoint": round(midpoint, 4) if midpoint else None,
             "d1_checked_date": sig.get("d1_checked_date"),
             "d1_close": sig.get("d1_close"),
-            "support_date": sig.get("support_date"),
-            "support_close": sig.get("support_close"),
             "latest_price": live.get("price"),
             "latest_ma5": live.get("ma5"),
             "latest_ma10": live.get("ma10"),
         })
-    support_candidates.sort(key=lambda x: (x.get("stats_rank") or 999, x.get("d0_date") or "", x.get("code") or ""))
-    support_candidates = support_candidates[:10]
+    support_candidates.sort(key=lambda x: (
+        0 if x.get("official_top5") else 1,
+        tier_order.get(x.get("confidence_tier"), 9),
+        x.get("stats_rank") or 999,
+        x.get("d0_date") or "", x.get("code") or ""
+    ))
+    support_candidates = support_candidates[:20]
 
     holdings = []
     raw_holdings = portfolio.get("holdings") if isinstance(portfolio, dict) else []
@@ -765,7 +841,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
     }
 
     out = {
-        "schema_version": "2026-09-02.10",
+        "schema_version": "2026-09-02.11",
         "generated_at": generated_at,
         "strategy_config": cfg,
         "market_filter": market_filter,
@@ -774,6 +850,8 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
         "leveraged": leveraged_out,
         "holdings": holdings,
         "stats_ranking": stats_rows,
+        "stats_ranking_note": "從第一筆樣本即輸出；>=20完成回測樣本才具正式TOP5資格",
+        "official_top5": [compact_stat(r) for r in (stats.get("global_top5") or [])],
         "support_candidates": support_candidates,
         "scanner_candidates": candidates,
     }
@@ -782,7 +860,6 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
         encoding="utf-8",
     )
     return out
-
 
 def main():
     cfg = load_config()
