@@ -317,7 +317,7 @@ function renderStats(){
  const rows=Array.isArray(statsData?.global_top5)?statsData.global_top5.slice(0,5):[];
  const p=v=>(v!==null&&v!==''&&Number.isFinite(Number(v)))?`${Number(v)>=0?'+':''}${Number(v).toFixed(2)}%`:'—';
  const comboText=row=>(Array.isArray(row?.combo)?row.combo:[]).map(x=>`${x.value?'✓':'×'}${x.name}`).join('・');
- if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・64 組合 × 5 情境＝320 種結果・只顯示全體 TOP 5・依平均每筆實際策略報酬率排序・勝率=10日內曾達+20%・條件版 ${statsData?.config?.version||'—'}`;
+ if($('statsMeta'))$('statsMeta').textContent=`更新 ${statsData.generated_at||'—'}・64 組合 × 5 情境＝320 種結果・推薦分級：0–9筆＝資料累積中｜10–19筆＝初步統計｜≥20筆才可列入正式 TOP 5・條件版 ${statsData?.config?.version||'—'}`;
  const box=$('statsScenarioCards');if(!box)return;
  const body=rows.length?rows.map((x,i)=>`<tr>
    <td><b>${i+1}</b></td><td><b>${x.scenario_name||x.scenario||'—'}</b></td>
@@ -351,7 +351,7 @@ async function load(){
   db=d||{};meta=m||{};marketLive=mk||{};reminderData=rem||{};
   strategyConfig={...strategyConfig,...(meta.strategy_config||{}),...(cfg||{})};
   const raw=Array.isArray(reminderData.support_candidates)?reminderData.support_candidates:[];
-  const arr=raw.filter(x=>Number(x.strategy_complete_samples||0)>0 && x.scenario && Number(x.stats_rank||0)>0).slice(0,10);
+  const arr=raw.filter(x=>x.scenario).slice(0,10);
   $('scanStatus').textContent=`今日推薦 ${arr.length} 檔`;
   $('scanMeta').textContent=`與 13:00 通知同源${reminderData.generated_at?'・更新 '+reminderData.generated_at:''}・只取全體 TOP 5 統計結果`;
  }catch(e){
@@ -430,7 +430,7 @@ const GROUPS=[
 function scannerGroups(){const groups=Object.fromEntries(GROUPS.map(g=>[g.id,[]]));Object.entries(db).forEach(([c,i])=>{const cs=conds(i),g=GROUPS.find(x=>x.test(cs));if(g)groups[g.id].push([c,i,cs])});GROUPS.forEach(g=>groups[g.id].sort((a,b)=>(+b[1].volume20_avg_lots||0)-(+a[1].volume20_avg_lots||0)));return groups}
 function renderScanner(){
  const raw=Array.isArray(reminderData?.support_candidates)?reminderData.support_candidates:[];
- const arr=raw.filter(x=>Number(x.strategy_complete_samples||0)>0 && x.scenario && Number(x.stats_rank||0)>0).slice(0,10);
+ const arr=raw.filter(x=>x.scenario).slice(0,10);
  const p=v=>(v!==null&&v!==''&&Number.isFinite(Number(v)))?`${Number(v)>=0?'+':''}${Number(v).toFixed(2)}%`:'—';
  if(!arr.length){
    $('watchs').innerHTML='<div class=empty>目前沒有有效的今日推薦標的。只有「新版統計已有實際樣本＋符合全體 TOP 5＋當下情境完整成立」才會列入；樣本 0 或舊資料一律不推薦。</div>';

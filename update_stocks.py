@@ -11,7 +11,7 @@ TWSE_URL = "https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL"
 TPEX_URL = "https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Accept": "application/json,text/plain,*/*"}
 DEFAULT_CONFIG = {
-    "version": "2026-09-02.8",
+    "version": "2026-09-02.9",
     "compact_ma_pct": 0.03,
     "min_avg_volume_lots": 10000,
     "volume_multiplier": 2.0,
@@ -508,11 +508,14 @@ def rebuild_signals_and_stats(cfg, generated_at):
                     "strategy_best_trade_pct": None, "strategy_worst_trade_pct": None, "strategy_complete_samples": 0,
                     "samples": 0, "complete_samples": 0,
                 }
+            n_complete = int(row.get("strategy_complete_samples", 0) or 0)
+            row["confidence_tier"] = "正式統計" if n_complete >= 20 else ("初步統計" if n_complete >= 10 else "資料累積中")
+            row["official_top5_eligible"] = n_complete >= 20
             combo_rows.append(row)
 
     # Global ranking across all 64 combinations x 5 scenarios = 320 possible results.
     # Only the best five are surfaced to the website/reminder.
-    ranked_all = [x for x in combo_rows if x.get("strategy_complete_samples", 0) > 0]
+    ranked_all = [x for x in combo_rows if x.get("strategy_complete_samples", 0) >= 20]
     ranked_all.sort(key=lambda x: (
         -(x["strategy_avg_return_pct"] if x["strategy_avg_return_pct"] is not None else -999999),
         -(x["win_rate_pct"] or 0),
@@ -527,7 +530,7 @@ def rebuild_signals_and_stats(cfg, generated_at):
     global_top5 = ranked_all[:5]
     # A recommendation is valid only after the new statistics have at least one real sample.
     # Zero-sample / stale legacy data can never become a buy recommendation.
-    top5_keys = {f"{x['scenario']}:{x['combo_id']}" for x in global_top5 if int(x.get("strategy_complete_samples", 0) or 0) > 0}
+    top5_keys = {f"{x['scenario']}:{x['combo_id']}" for x in global_top5 if int(x.get("strategy_complete_samples", 0) or 0) >= 20}
 
     summary = {
         "generated_at": generated_at,
@@ -666,8 +669,6 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
         if scenario_key not in top5_keys:
             continue
         matched_stat = next((r for r in stats_rows if r.get("scenario") == scenario and r.get("combo_id") == cid), {})
-        if int(matched_stat.get("strategy_complete_samples", 0) or 0) <= 0:
-            continue
         support_candidates.append({
             "code": sig.get("code"),
             "name": sig.get("name", ""),
@@ -685,6 +686,8 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
             "win_rate_pct": matched_stat.get("win_rate_pct"),
             "samples": matched_stat.get("samples", 0),
             "strategy_complete_samples": matched_stat.get("strategy_complete_samples", 0),
+            "confidence_tier": matched_stat.get("confidence_tier", "資料累積中"),
+            "official_top5": is_official_top5,
             "strategy_avg_return_pct": matched_stat.get("strategy_avg_return_pct"),
             "strategy_profit_rate_pct": matched_stat.get("strategy_profit_rate_pct"),
             "strategy_best_trade_pct": matched_stat.get("strategy_best_trade_pct"),
@@ -738,7 +741,7 @@ def build_reminder_json(cfg, generated_at, results, market_filter, signals, stat
     }
 
     out = {
-        "schema_version": "2026-09-02.8",
+        "schema_version": "2026-09-02.9",
         "generated_at": generated_at,
         "strategy_config": cfg,
         "market_filter": market_filter,
