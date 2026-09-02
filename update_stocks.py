@@ -138,18 +138,47 @@ def group_for(rec, cfg):
     if (not c[0]) and c[1] and c[2] and c[3] and c[4] and c[5]: return "F"
     return None
 
+def tw_tick(price):
+    """Taiwan equity price tick size."""
+    p = float(price)
+    if p < 10: return 0.01
+    if p < 50: return 0.05
+    if p < 100: return 0.10
+    if p < 500: return 0.50
+    if p < 1000: return 1.00
+    return 5.00
+
+def tw_limit_up_price(prev_close):
+    """Approximate TWSE/TPEx ordinary-stock +10% daily limit using exchange tick grid."""
+    from decimal import Decimal, ROUND_FLOOR
+    p = Decimal(str(prev_close))
+    raw = p * Decimal("1.10")
+    tick = Decimal(str(tw_tick(float(raw))))
+    return float((raw / tick).to_integral_value(rounding=ROUND_FLOOR) * tick)
+
 def calc(code, name, market, cfg):
     rows = fetch_yahoo_chart(code, market)
     closes = [r["close"] for r in rows]
     vols = [r["volume_lots"] for r in rows]
+    prev_close = float(closes[-2])
+    close_now = float(closes[-1])
+    high_now = float(rows[-1]["high"])
+    limit_up_price = tw_limit_up_price(prev_close)
+    eps = 1e-9
     rec = {
         "code": code,
         "name": name,
         "market": "TWSE" if market == "TW" else "TPEx",
         "date": rows[-1]["date"],
-        "price": round(closes[-1], 4),
-        "high": round(rows[-1]["high"], 4),
+        "price": round(close_now, 4),
+        "high": round(high_now, 4),
         "low": round(rows[-1]["low"], 4),
+        "prev_close": round(prev_close, 4),
+        "daily_return_pct": round((close_now / prev_close - 1) * 100, 4) if prev_close > 0 else None,
+        "intraday_high_return_pct": round((high_now / prev_close - 1) * 100, 4) if prev_close > 0 else None,
+        "limit_up_price": round(limit_up_price, 4),
+        "limit_up_close": bool(close_now + eps >= limit_up_price),
+        "limit_up_touched": bool(high_now + eps >= limit_up_price),
         "ma5": round(mean(closes[-5:]), 4),
         "ma10": round(mean(closes[-10:]), 4),
         "ma20": round(mean(closes[-20:]), 4),
@@ -219,6 +248,12 @@ def rebuild_signals_and_stats(cfg, generated_at):
                 "d0_close": rec0.get("price"),
                 "d0_high": rec0.get("high", rec0.get("price")),
                 "d0_low": rec0.get("low", rec0.get("price")),
+                "d0_prev_close": rec0.get("prev_close"),
+                "d0_daily_return_pct": rec0.get("daily_return_pct"),
+                "d0_intraday_high_return_pct": rec0.get("intraday_high_return_pct"),
+                "d0_limit_up_price": rec0.get("limit_up_price"),
+                "d0_limit_up_close": bool(rec0.get("limit_up_close", False)),
+                "d0_limit_up_touched": bool(rec0.get("limit_up_touched", False)),
                 "market_filter": d0.get("market_filter") or {},
                 "config_version": cfg.get("version", ""),
                 "status": "waiting_d1",
@@ -248,12 +283,31 @@ def rebuild_signals_and_stats(cfg, generated_at):
                 "d1_close": round(close1, 4), "d1_ma5": round(ma5, 4), "d0_midpoint": round(midpoint, 4),
                 "support_confirmed": support,
             })
-            if not support:
-                sig["status"] = "rejected_d1"
-                signals.append(sig)
-                continue
-            sig["support_date"] = d1.get("date", "")
-            sig["support_close"] = round(close1, 4)
+            # Classify D1 outcome, but track the following 10 trading days for ALL D0 signals.
+            # This keeps rejected cases as a control group for later comparison.
+            too_high = bool(d0_close > 0 and close1 > d0_close * (1 + cfg["support_max_gap_pct"]))
+            below_ma5 = bool(close1 > 0 and ma5 > 0 and close1 < ma5)
+            below_midpoint = bool(close1 > 0 and midpoint > 0 and close1 < midpoint)
+            reject_reasons = []
+            if too_high: reject_reasons.append("too_high")
+            if below_ma5: reject_reasons.append("below_ma5")
+            if below_midpoint: reject_reasons.append("below_d0_midpoint")
+            if close1 <= 0: reject_reasons.append("invalid_close")
+            sig.update({
+                "d1_change_vs_d0_pct": round((close1 / d0_close - 1) * 100, 4) if close1 > 0 and d0_close > 0 else None,
+                "d1_too_high": too_high,
+                "d1_below_ma5": below_ma5,
+                "d1_below_d0_midpoint": below_midpoint,
+                "d1_reject_reasons": reject_reasons,
+                "tracking_base": "d1_close",
+                "tracking_base_close": round(close1, 4) if close1 > 0 else None,
+            })
+            if support:
+                sig["support_date"] = d1.get("date", "")
+                sig["support_close"] = round(close1, 4)
+                sig["d1_result"] = "supported"
+            else:
+                sig["d1_result"] = "rejected"
             tracking = []
             for dx in snaps[i + 2:i + 2 + tracking_days]:
                 rx = (dx.get("stocks") or {}).get(code)
@@ -271,7 +325,10 @@ def rebuild_signals_and_stats(cfg, generated_at):
                 except Exception:
                     continue
             sig["tracking"] = tracking
-            sig["status"] = "complete" if len(tracking) >= tracking_days else "tracking"
+            if support:
+                sig["status"] = "complete" if len(tracking) >= tracking_days else "tracking"
+            else:
+                sig["status"] = "rejected_d1_complete" if len(tracking) >= tracking_days else "rejected_d1_tracking"
             signals.append(sig)
 
     Path("signals_history.json").write_text(json.dumps({
