@@ -31,7 +31,7 @@
 .ltable tr.active{background:#153653}
 
 .statsScroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin-top:12px}.statsTable{width:100%;min-width:620px;border-collapse:collapse;font-size:13px}.statsTable th,.statsTable td{padding:12px 9px;border-bottom:1px solid var(--l);text-align:right;white-space:nowrap}.statsTable th:first-child,.statsTable td:first-child{text-align:left;min-width:180px}.statsTable tbody tr:first-child{background:#153653}.statsTable .pos{color:var(--g);font-weight:900}.statsTable .neg{color:var(--r);font-weight:900}.statsTable .countCell{font-weight:900}
-</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V4.2・提醒同步穩定版</div>
+</style></head><body><div class=w><h1>台股策略工具</h1><div class=m>V4.3・最終確認版</div>
 <div class=tabs><div class="tab on" data-p=f>資金總覽</div><div class=tab data-p=l>正2策略</div><div class=tab data-p=s>個股</div><div class=tab data-p=a>統計分析</div></div>
 <section id=f class="page on">
 <div class=card><h2>資金總覽</h2><div class=hint>持股資訊由正2與個股頁自動彙總。</div><label class=m>目前可動用總資金（含持股市值）</label><input id=capital type=number placeholder="2500000"><div class=grid><div class=metric>正2目標 30%<b id=t30>—</b></div><div class=metric>單一個股 20%<b id=t20>—</b></div><div class=metric>個股上限 40%<b id=t40>—</b></div><div class=metric>預估可用現金<b id=fCash>—</b></div></div></div>
@@ -100,7 +100,7 @@
 <div class=card>
   <h2>加碼階梯</h2>
   <div id=lLadder></div>
-  <div id=lSignal class=empty style="margin-top:14px">更新行情並輸入本輪高點後，自動判斷目前階段。</div>
+  <div id=lSignal class=empty style="margin-top:14px">讀取行情並輸入本輪高點後，自動判斷目前階段。</div>
 </div>
 
 </section>
@@ -224,7 +224,8 @@ function renderLeveraged(){
  if($('lMarketPrice')) $('lMarketPrice').textContent=l.price?'$'+N(l.price):'—';
  if($('lUpdated')) $('lUpdated').textContent=l.updated?'資料更新・'+l.updated:'讀取目前資料';
 
- let dd=(l.peak>0&&l.index>0)?(l.index/l.peak-1)*100:null;
+ let peakChange=(l.peak>0&&l.index>0)?(l.index/l.peak-1)*100:null;
+ let dd=peakChange===null?null:Math.min(0,peakChange);
  let target=30, stage='初始 30%';
  if(dd!==null){
    if(dd<=-60){target=90;stage='-60% 階段'}
@@ -248,9 +249,12 @@ function renderLeveraged(){
    }).join('')}</tbody></table>`;
 
  if($('lSignal')) $('lSignal').innerHTML=dd===null
-   ? '更新行情並輸入本輪高點後，自動判斷目前階段。'
-   : `<b>目前回檔 ${dd.toFixed(2)}%｜正2目標 ${target}%</b>
-      <div class=small style="margin-top:6px">${stage}・至少保留 10% 現金</div>`;
+   ? '讀取行情並輸入本輪高點後，自動判斷目前階段。'
+   : peakChange>0
+      ? `<b>目前高於本輪高點 +${peakChange.toFixed(2)}%｜回檔 0.00%｜正2目標 ${target}%</b>
+         <div class=small style="margin-top:6px">${stage}・本輪高點維持手動設定・至少保留 10% 現金</div>`
+      : `<b>目前回檔 ${dd.toFixed(2)}%｜正2目標 ${target}%</b>
+         <div class=small style="margin-top:6px">${stage}・至少保留 10% 現金</div>`;
 
  let lots=0,cost=0;
  l.buys.forEach(x=>{
@@ -286,11 +290,17 @@ function renderLeveraged(){
  if($('lSellAmt')) $('lSellAmt').textContent=Number.isFinite(sellAmt)?'NT$ '+Math.round(sellAmt).toLocaleString('zh-TW'):'—';
  if($('lSellLots')) $('lSellLots').textContent=Number.isFinite(sellLots)?sellLots.toFixed(2)+' 張':'—';
 
- if($('lRebalance')) $('lRebalance').innerHTML=Number.isFinite(pct)&&pct>=30
-   ? '<b>🟢 已達 +30% 再平衡條件</b><div class=small style="margin-top:6px">正2調回當下總資產 30%，其餘轉回現金並重設本輪。</div>'
-   : Number.isFinite(rebPrice)&&l.price>0
-      ? `<b>距 +30% 再平衡價 $${N(rebPrice)}</b><div class=small style="margin-top:6px">目前 00631L：$${N(l.price)}</div>`
-      : '整體正2持倉相對加權成本 +30% 時，再平衡回當下總資產 30%。';
+ if($('lRebalance')) {
+   const noSellAtReb=Number.isFinite(sellAmt)&&sellAmt<=0&&Number.isFinite(rebValue)&&Number.isFinite(rebTarget);
+   const calcNote=noSellAtReb
+      ? `<div class=small style="margin-top:6px">預估無需賣出：到達 +30% 時，正2預估市值 NT$ ${Math.round(rebValue).toLocaleString('zh-TW')}，仍低於當下總資產 30% 目標 NT$ ${Math.round(rebTarget).toLocaleString('zh-TW')}。</div>`
+      : '';
+   $('lRebalance').innerHTML=Number.isFinite(pct)&&pct>=30
+      ? `<b>🟢 已達 +30% 再平衡條件</b><div class=small style="margin-top:6px">只有超過當下總資產 30% 的部分才賣出；其餘轉回現金並重設本輪。</div>${calcNote}`
+      : Number.isFinite(rebPrice)&&l.price>0
+         ? `<b>距 +30% 再平衡價 $${N(rebPrice)}</b><div class=small style="margin-top:6px">目前 00631L：$${N(l.price)}</div>${calcNote}`
+         : '整體正2持倉相對加權成本 +30% 時，只有超過當下總資產 30% 的部分才賣出。';
+ }
 
  if($('lBuys')) $('lBuys').innerHTML=l.buys.length
    ? l.buys.map((x,i)=>`<div class=item><div class=head><div><b>${x.date}</b><div class=small>買入 $${N(+x.price)}｜${N(+x.lots)} 張</div></div><button class=del onclick="delLeveragedBuy(${i})">刪除</button></div></div>`).join('')
