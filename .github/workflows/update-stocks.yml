@@ -126,7 +126,111 @@ jobs:
               json.dumps(data, ensure_ascii=False, indent=2),
           ])
 
+          # Plain-text part keeps the full machine-readable payload for ChatGPT.
           msg.set_content(summary)
+
+          # Gmail will render this HTML version for a much cleaner human-readable view.
+          def esc(v):
+              import html
+              return html.escape(str(v))
+
+          holding_cards = ""
+          for h in holdings[:10]:
+              hp = h.get("latest_price")
+              hc = h.get("avg_cost")
+              pnl = ""
+              try:
+                  if hp is not None and hc:
+                      pct = (float(hp) / float(hc) - 1) * 100
+                      pnl = f"{pct:+.2f}%"
+              except Exception:
+                  pass
+              holding_cards += f"""
+              <div style="background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;padding:14px;margin:8px 0;">
+                <div style="font-size:16px;font-weight:700;color:#111827;">{esc(h.get('code',''))} {esc(h.get('name',''))}</div>
+                <div style="margin-top:6px;color:#4b5563;font-size:14px;line-height:1.7;">
+                  {esc(h.get('lots',0))} 張 · 成本 {esc(h.get('avg_cost','-'))} · 最新 {esc(h.get('latest_price','-'))}
+                  {(' · ' + esc(pnl)) if pnl else ''}
+                  <br>MA5 {esc(h.get('ma5','-'))} · MA10 {esc(h.get('ma10','-'))}
+                </div>
+              </div>
+              """
+          if not holding_cards:
+              holding_cards = '<div style="color:#6b7280;">目前無個股持倉</div>'
+
+          def chips(items, limit=20):
+              if not items:
+                  return '<span style="color:#9ca3af;">無</span>'
+              return "".join(
+                  f'<span style="display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:6px 10px;margin:4px 4px 0 0;font-size:13px;">{esc(x.get("code",""))} {esc(x.get("name",""))}</span>'
+                  for x in items[:limit]
+              )
+
+          mf_on = bool(mf.get("filter_on"))
+          mf_bg = "#ecfdf5" if mf_on else "#fef2f2"
+          mf_fg = "#047857" if mf_on else "#b91c1c"
+          mf_label = "ON" if mf_on else "OFF"
+
+          html_body = f"""
+          <!doctype html>
+          <html>
+          <body style="margin:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;color:#111827;">
+            <div style="max-width:680px;margin:0 auto;padding:20px 14px 34px;">
+              <div style="background:linear-gradient(135deg,#111827,#374151);color:white;border-radius:22px;padding:22px;">
+                <div style="font-size:13px;opacity:.8;">TW STRATEGY</div>
+                <div style="font-size:26px;font-weight:800;margin-top:4px;">每日策略摘要</div>
+                <div style="font-size:13px;opacity:.8;margin-top:8px;">資料時間 {esc(generated_at)}</div>
+              </div>
+
+              <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                  <div style="font-size:18px;font-weight:800;">大盤濾網</div>
+                  <div style="background:{mf_bg};color:{mf_fg};font-weight:800;border-radius:999px;padding:7px 12px;">{mf_label}</div>
+                </div>
+                <div style="font-size:26px;font-weight:800;margin-top:12px;">TAIEX {esc(mf.get('price','-'))}</div>
+                <div style="color:#6b7280;font-size:13px;line-height:1.7;margin-top:6px;">
+                  MA5 {esc(mf.get('ma5','-'))} · MA10 {esc(mf.get('ma10','-'))}<br>
+                  MA20 {esc(mf.get('ma20','-'))} · MA240 {esc(mf.get('ma240','-'))}
+                </div>
+              </div>
+
+              <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
+                <div style="font-size:18px;font-weight:800;">🚀 正2｜00631L</div>
+                <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:12px;">
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(lev.get('lots',0))}</b><br><span style="font-size:12px;color:#6b7280;">張數</span></div>
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(lev.get('avg_cost','-'))}</b><br><span style="font-size:12px;color:#6b7280;">平均成本</span></div>
+                  <div style="background:#f9fafb;border-radius:12px;padding:10px 12px;"><b>{esc(lev.get('latest_price','-'))}</b><br><span style="font-size:12px;color:#6b7280;">最新價</span></div>
+                </div>
+              </div>
+
+              <div style="margin-top:14px;">
+                <div style="font-size:18px;font-weight:800;margin:0 2px 8px;">📦 個股持倉</div>
+                {holding_cards}
+              </div>
+
+              <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
+                <div style="font-size:18px;font-weight:800;">✅ D1 已確認支撐 <span style="color:#6b7280;font-size:14px;">{len(tracking)} 檔</span></div>
+                <div style="margin-top:8px;">{chips(tracking)}</div>
+              </div>
+
+              <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
+                <div style="font-size:18px;font-weight:800;">⏳ 等待 D1 <span style="color:#6b7280;font-size:14px;">{len(waiting)} 檔</span></div>
+                <div style="margin-top:8px;">{chips(waiting)}</div>
+              </div>
+
+              <div style="background:white;border-radius:18px;padding:18px;margin-top:14px;border:1px solid #e5e7eb;">
+                <div style="font-size:18px;font-weight:800;">🔎 目前掃描候選</div>
+                <div style="font-size:34px;font-weight:800;margin-top:6px;">{len(scanner)} <span style="font-size:14px;color:#6b7280;">檔</span></div>
+              </div>
+
+              <div style="text-align:center;color:#9ca3af;font-size:12px;margin-top:18px;">
+                完整 JSON 已保留在純文字版本，供 ChatGPT 自動提醒解析。
+              </div>
+            </div>
+          </body>
+          </html>
+          """
+          msg.add_alternative(html_body, subtype="html")
 
           with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
               smtp.login(username, app_password)
