@@ -1,0 +1,32 @@
+name: Build Research Database
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: Research years
+        required: true
+        default: '10'
+
+permissions:
+  contents: read
+
+jobs:
+  build-db:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build yearly OHLCV database
+        run: python build_research_db.py --years "${{ github.event.inputs.years || '10' }}" --workers 12 --outdir research_db
+      - name: Show sizes
+        run: du -h research_db/* | sort -h
+      - name: Upload research database
+        uses: actions/upload-artifact@v4
+        with:
+          name: tw-research-db-${{ github.run_number }}
+          path: research_db/
+          compression-level: 0
+          retention-days: 30
