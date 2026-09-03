@@ -1,0 +1,44 @@
+name: Prebreak Pattern Clustering Stage 2B
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: Research years
+        required: true
+        default: '10'
+      clusters:
+        description: Number of unsupervised pattern clusters
+        required: true
+        default: '8'
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install clustering dependency
+        run: pip install -q numpy scikit-learn
+      - name: Rebuild temporary OHLCV database
+        run: python build_research_db.py --years "${{ github.event.inputs.years || '10' }}" --workers 12 --outdir research_db
+      - name: Cluster prebreak trajectories
+        run: python prebreak_stage2b.py --db research_db --clusters "${{ github.event.inputs.clusters || '8' }}" --out prebreak_stage2b_clusters.json
+      - name: Inspect compact result
+        run: |
+          ls -lh prebreak_stage2b_clusters.json
+          python - <<'PY'
+          import json
+          j=json.load(open("prebreak_stage2b_clusters.json",encoding="utf-8"))
+          print("events:",j["event_count"],"clusters:",j["cluster_count"])
+          for g in j["clusters"]:
+              print(g["cluster"],g["n"],g["outcomes_from_D_minus_1_close"]["hit20_within_3d_pct"])
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prebreak-stage2b-${{ github.run_number }}
+          path: prebreak_stage2b_clusters.json
+          retention-days: 30
