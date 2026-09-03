@@ -1,0 +1,37 @@
+name: Prebreak Signal Discovery Stage 2
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: Research years
+        required: true
+        default: '10'
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rebuild temporary OHLCV database
+        run: python build_research_db.py --years "${{ github.event.inputs.years || '10' }}" --workers 12 --outdir research_db
+      - name: Discover D-10 to D-1 prebreak features
+        run: python prebreak_stage2.py --db research_db --out prebreak_stage2.json
+      - name: Show result size
+        run: |
+          ls -lh prebreak_stage2.json
+          python - <<'PY'
+          import json
+          j=json.load(open("prebreak_stage2.json",encoding="utf-8"))
+          print("breakout events:",j["breakout_events"])
+          print("features:",", ".join(j["features"]))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: prebreak-stage2-${{ github.run_number }}
+          path: prebreak_stage2.json
+          retention-days: 30
