@@ -1,13 +1,13 @@
 {
-  "updated_at": "2026-09-02T14:15:54.647Z",
+  "updated_at": "2026-09-03T03:41:03.029Z",
   "capital": 2500000,
   "leveraged": {
     "code": "00631L",
     "lots": 13,
     "avg_cost": 34.69,
-    "latest_price": 35.93,
+    "latest_price": 35.91,
     "peak_index": 45226,
-    "taiex": 46164.72
+    "taiex": 46187.83
   },
   "holdings": [
     {
