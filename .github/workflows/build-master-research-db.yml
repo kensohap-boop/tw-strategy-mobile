@@ -1,0 +1,25 @@
+name: Build Master Research DB
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build frozen master database once
+        run: python build_master_research_db.py --research-years 10 --warmup-years 2 --workers 12 --outdir master_db
+      - name: Package reusable master database
+        run: |
+          tar -czf TW_RESEARCH_MASTER_DB.tar.gz master_db
+          ls -lh TW_RESEARCH_MASTER_DB.tar.gz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TW-RESEARCH-MASTER-DB
+          path: TW_RESEARCH_MASTER_DB.tar.gz
+          retention-days: 90
