@@ -1,0 +1,41 @@
+name: Breakout Stage 1 Research
+on:
+  workflow_dispatch:
+    inputs:
+      years:
+        description: Research years
+        required: true
+        default: '10'
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Rebuild temporary OHLCV database
+        run: python build_research_db.py --years "${{ github.event.inputs.years || '10' }}" --workers 12 --outdir research_db
+      - name: Analyze consolidation breakouts
+        run: python breakout_stage1.py --db research_db --out breakout_stage1.json
+      - name: Show result
+        run: |
+          ls -lh breakout_stage1.json
+          python - <<'PY'
+          import json
+          j=json.load(open("breakout_stage1.json",encoding="utf-8"))
+          print("stocks:",j["stock_count"])
+          print("unique breakout events:",j["unique_breakout_events"])
+          print(json.dumps(j["threshold_summary"],ensure_ascii=False,indent=2))
+          PY
+      - name: Upload compact research result
+        uses: actions/upload-artifact@v4
+        with:
+          name: breakout-stage1-${{ github.run_number }}
+          path: breakout_stage1.json
+          retention-days: 30
