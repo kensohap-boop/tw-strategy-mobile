@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-02 19:57:22",
+  "generated_at": "2026-09-03 13:39:14",
   "universe": 1972,
   "ok": 1960,
   "errors": 12,
@@ -7,70 +7,70 @@
     {
       "code": "6921",
       "market": "TW",
-      "error": "insufficient history: 167"
+      "error": "insufficient history: 168"
     },
     {
       "code": "7689",
       "market": "TW",
-      "error": "insufficient history: 221"
+      "error": "insufficient history: 222"
     },
     {
       "code": "7711",
       "market": "TW",
-      "error": "insufficient history: 191"
+      "error": "insufficient history: 192"
     },
     {
       "code": "7791",
       "market": "TW",
-      "error": "insufficient history: 208"
-    },
-    {
-      "code": "7803",
-      "market": "TW",
-      "error": "insufficient history: 75"
+      "error": "insufficient history: 209"
     },
     {
       "code": "7799",
       "market": "TW",
-      "error": "insufficient history: 235"
+      "error": "insufficient history: 236"
+    },
+    {
+      "code": "7803",
+      "market": "TW",
+      "error": "insufficient history: 76"
     },
     {
       "code": "7823",
       "market": "TW",
-      "error": "insufficient history: 138"
+      "error": "insufficient history: 139"
     },
     {
       "code": "7835",
       "market": "TW",
-      "error": "insufficient history: 29"
+      "error": "insufficient history: 30"
     },
     {
       "code": "7855",
       "market": "TW",
-      "error": "insufficient history: 222"
+      "error": "insufficient history: 223"
     },
     {
       "code": "6907",
       "market": "TWO",
-      "error": "insufficient history: 142"
+      "error": "insufficient history: 143"
     },
     {
       "code": "7717",
       "market": "TWO",
-      "error": "insufficient history: 194"
+      "error": "insufficient history: 195"
     },
     {
       "code": "7794",
       "market": "TWO",
-      "error": "insufficient history: 34"
+      "error": "insufficient history: 35"
     }
   ],
   "market_filter": {
-    "price": 46164.7188,
-    "ma5": 46209.9492,
-    "ma10": 45585.8906,
-    "ma20": 45382.9555,
-    "ma240": 35229.4754,
+    "price": 45928.8008,
+    "ma5": 46229.1852,
+    "ma10": 45706.8355,
+    "ma20": 45448.8154,
+    "ma240": 35320.096,
     "bullish_ma": true,
     "above_ma240": true,
     "filter_on": true
