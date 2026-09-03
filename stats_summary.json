@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-02 19:57:22",
+  "generated_at": "2026-09-03 19:57:11",
   "basis": "actual_exit_rule_backtest",
   "ranking": "strategy_avg_return_pct_desc",
   "strategy_backtest_rules": {
