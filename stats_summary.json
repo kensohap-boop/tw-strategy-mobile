@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03 19:57:11",
+  "generated_at": "2026-09-04 19:57:54",
   "basis": "actual_exit_rule_backtest",
   "ranking": "strategy_avg_return_pct_desc",
   "strategy_backtest_rules": {
@@ -2566,12 +2566,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 0.9452,
+      "avg_max_down_pct": -6.4272,
+      "avg_final_pct": -5.104,
+      "cumulative_pct": -5.104,
+      "median_final_pct": -5.104,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -2581,7 +2581,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 1,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -4866,25 +4883,43 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 1.4056,
+      "avg_max_down_pct": -0.4874,
+      "avg_final_pct": 0.5762,
+      "cumulative_pct": 26.5043,
+      "median_final_pct": 0.3145,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
-      "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_return_pct": 0.2943,
+      "strategy_total_pnl_pct": 7.3569,
+      "strategy_profit_rate_pct": 52.0,
+      "strategy_avg_win_pct": 0.9577,
+      "strategy_avg_loss_pct": -0.6366,
+      "strategy_best_trade_pct": 3.2,
+      "strategy_worst_trade_pct": -1.469,
+      "strategy_complete_samples": 25,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 29,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 25,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 26,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 46,
       "complete_samples": 0,
-      "confidence_tier": "資料累積中",
-      "official_top5_eligible": false
+      "confidence_tier": "正式統計",
+      "official_top5_eligible": true,
+      "rank": 1
     },
     {
       "scenario": "S2",
@@ -4966,22 +5001,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.1553,
+      "avg_max_down_pct": -0.9023,
+      "avg_final_pct": 0.3402,
+      "cumulative_pct": 2.3814,
+      "median_final_pct": 0.1079,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
-      "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_return_pct": -0.1408,
+      "strategy_total_pnl_pct": -0.4224,
+      "strategy_profit_rate_pct": 33.33,
+      "strategy_avg_win_pct": 0.1079,
+      "strategy_avg_loss_pct": -0.2651,
+      "strategy_best_trade_pct": 0.1079,
+      "strategy_worst_trade_pct": -0.3175,
+      "strategy_complete_samples": 3,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 4,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 3,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 3,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 7,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -5266,24 +5318,41 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 1.2915,
+      "avg_max_down_pct": -0.2796,
+      "avg_final_pct": 0.7833,
+      "cumulative_pct": 22.7165,
+      "median_final_pct": 0.5556,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
-      "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_return_pct": 0.2613,
+      "strategy_total_pnl_pct": 3.1358,
+      "strategy_profit_rate_pct": 58.33,
+      "strategy_avg_win_pct": 0.8553,
+      "strategy_avg_loss_pct": -0.9503,
+      "strategy_best_trade_pct": 1.7699,
+      "strategy_worst_trade_pct": -1.8919,
+      "strategy_complete_samples": 12,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 16,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 12,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 7,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 29,
       "complete_samples": 0,
-      "confidence_tier": "資料累積中",
+      "confidence_tier": "初步統計",
       "official_top5_eligible": false
     },
     {
@@ -5366,22 +5435,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.6539,
+      "avg_max_down_pct": -0.3418,
+      "avg_final_pct": 1.3177,
+      "cumulative_pct": 13.1771,
+      "median_final_pct": 0.8796,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
-      "strategy_avg_win_pct": null,
+      "strategy_avg_return_pct": 0.7915,
+      "strategy_total_pnl_pct": 2.3746,
+      "strategy_profit_rate_pct": 100.0,
+      "strategy_avg_win_pct": 0.7915,
       "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_best_trade_pct": 1.8919,
+      "strategy_worst_trade_pct": 0.1653,
+      "strategy_complete_samples": 3,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 3,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 3,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 2,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 10,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -5666,22 +5752,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.2971,
+      "avg_max_down_pct": -0.6173,
+      "avg_final_pct": 1.1741,
+      "cumulative_pct": 18.7856,
+      "median_final_pct": 0.889,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
-      "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_return_pct": 0.1925,
+      "strategy_total_pnl_pct": 1.3475,
+      "strategy_profit_rate_pct": 42.86,
+      "strategy_avg_win_pct": 1.6795,
+      "strategy_avg_loss_pct": -0.9228,
+      "strategy_best_trade_pct": 3.9216,
+      "strategy_worst_trade_pct": -1.7628,
+      "strategy_complete_samples": 7,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 9,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 7,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 8,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 16,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -5766,22 +5869,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 4.4935,
+      "avg_max_down_pct": 0.0828,
+      "avg_final_pct": 3.0951,
+      "cumulative_pct": 12.3803,
+      "median_final_pct": 1.6379,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
+      "strategy_avg_return_pct": -0.8529,
+      "strategy_total_pnl_pct": -0.8529,
+      "strategy_profit_rate_pct": 0.0,
       "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_loss_pct": -0.8529,
+      "strategy_best_trade_pct": -0.8529,
+      "strategy_worst_trade_pct": -0.8529,
+      "strategy_complete_samples": 1,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 4,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -5816,12 +5936,12 @@
           "value": true
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.4096,
+      "avg_max_down_pct": -1.3387,
+      "avg_final_pct": 0.4016,
+      "cumulative_pct": 0.4016,
+      "median_final_pct": 0.4016,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -5831,7 +5951,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 1,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -5866,12 +6003,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 6.0642,
+      "avg_max_down_pct": 1.1263,
+      "avg_final_pct": 5.3806,
+      "cumulative_pct": 16.1418,
+      "median_final_pct": 5.531,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -5881,7 +6018,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 3,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -6066,22 +6220,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.4818,
+      "avg_max_down_pct": -0.288,
+      "avg_final_pct": 1.0523,
+      "cumulative_pct": 17.8891,
+      "median_final_pct": 0.5792,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
-      "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_return_pct": -0.318,
+      "strategy_total_pnl_pct": -1.908,
+      "strategy_profit_rate_pct": 16.67,
+      "strategy_avg_win_pct": 0.6787,
+      "strategy_avg_loss_pct": -0.5174,
+      "strategy_best_trade_pct": 0.6787,
+      "strategy_worst_trade_pct": -1.0989,
+      "strategy_complete_samples": 6,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 11,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 6,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 3,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 17,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -6166,22 +6337,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.6372,
+      "avg_max_down_pct": -1.8957,
+      "avg_final_pct": 0.9742,
+      "cumulative_pct": 4.8712,
+      "median_final_pct": 1.0651,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
+      "strategy_avg_return_pct": -0.9926,
+      "strategy_total_pnl_pct": -0.9926,
+      "strategy_profit_rate_pct": 0.0,
       "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_loss_pct": -0.9926,
+      "strategy_best_trade_pct": -0.9926,
+      "strategy_worst_trade_pct": -0.9926,
+      "strategy_complete_samples": 1,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 3,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 5,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -6266,12 +6454,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.88,
+      "avg_max_down_pct": 0.389,
+      "avg_final_pct": 2.0276,
+      "cumulative_pct": 4.0552,
+      "median_final_pct": 2.0276,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -6281,7 +6469,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 2,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -8066,22 +8271,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 1.3047,
+      "avg_max_down_pct": -1.5742,
+      "avg_final_pct": 0.4494,
+      "cumulative_pct": 7.64,
+      "median_final_pct": 0.2101,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
+      "strategy_avg_return_pct": -2.353,
+      "strategy_total_pnl_pct": -7.0589,
+      "strategy_profit_rate_pct": 0.0,
       "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_loss_pct": -2.353,
+      "strategy_best_trade_pct": -0.2506,
+      "strategy_worst_trade_pct": -5.2326,
+      "strategy_complete_samples": 3,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 4,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 3,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 3,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 17,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -8166,12 +8388,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.3125,
+      "avg_max_down_pct": -1.2182,
+      "avg_final_pct": 0.5158,
+      "cumulative_pct": 1.5474,
+      "median_final_pct": 2.276,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -8181,7 +8403,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 3,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -8466,22 +8705,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 1.1093,
+      "avg_max_down_pct": -0.6793,
+      "avg_final_pct": 0.2178,
+      "cumulative_pct": 3.2666,
+      "median_final_pct": 0.0,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
+      "strategy_avg_return_pct": -0.9934,
+      "strategy_total_pnl_pct": -0.9934,
+      "strategy_profit_rate_pct": 0.0,
       "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_loss_pct": -0.9934,
+      "strategy_best_trade_pct": -0.9934,
+      "strategy_worst_trade_pct": -0.9934,
+      "strategy_complete_samples": 1,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 2,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 15,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -8566,12 +8822,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 3.3201,
+      "avg_max_down_pct": 0.1673,
+      "avg_final_pct": 2.034,
+      "cumulative_pct": 8.1359,
+      "median_final_pct": 1.4919,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -8581,7 +8837,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 4,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -8866,22 +9139,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 1.5026,
+      "avg_max_down_pct": -0.4498,
+      "avg_final_pct": 0.8804,
+      "cumulative_pct": 11.4454,
+      "median_final_pct": 0.1642,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
-      "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_return_pct": -0.5905,
+      "strategy_total_pnl_pct": -1.1811,
+      "strategy_profit_rate_pct": 50.0,
+      "strategy_avg_win_pct": 0.1642,
+      "strategy_avg_loss_pct": -1.3453,
+      "strategy_best_trade_pct": 0.1642,
+      "strategy_worst_trade_pct": -1.3453,
+      "strategy_complete_samples": 2,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 2,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 13,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -8966,12 +9256,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.8417,
+      "avg_max_down_pct": -1.8444,
+      "avg_final_pct": -1.4141,
+      "cumulative_pct": -2.8282,
+      "median_final_pct": -1.4141,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -8981,7 +9271,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 2,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -9066,12 +9373,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 2.423,
+      "avg_max_down_pct": -0.3681,
+      "avg_final_pct": 1.4881,
+      "cumulative_pct": 5.9524,
+      "median_final_pct": 1.2996,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -9081,7 +9388,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 4,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -9266,22 +9590,39 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 0.7733,
+      "avg_max_down_pct": -0.8842,
+      "avg_final_pct": 0.1639,
+      "cumulative_pct": 1.6391,
+      "median_final_pct": 0.3155,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
-      "strategy_avg_return_pct": null,
-      "strategy_total_pnl_pct": null,
-      "strategy_profit_rate_pct": null,
+      "strategy_avg_return_pct": -1.7284,
+      "strategy_total_pnl_pct": -1.7284,
+      "strategy_profit_rate_pct": 0.0,
       "strategy_avg_win_pct": null,
-      "strategy_avg_loss_pct": null,
-      "strategy_best_trade_pct": null,
-      "strategy_worst_trade_pct": null,
-      "strategy_complete_samples": 0,
-      "samples": 0,
+      "strategy_avg_loss_pct": -1.7284,
+      "strategy_best_trade_pct": -1.7284,
+      "strategy_worst_trade_pct": -1.7284,
+      "strategy_complete_samples": 1,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 10,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -9366,12 +9707,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 1.3624,
+      "avg_max_down_pct": -1.4087,
+      "avg_final_pct": -0.0422,
+      "cumulative_pct": -0.1688,
+      "median_final_pct": 0.1179,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -9381,7 +9722,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 4,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -9466,12 +9824,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 0.8437,
+      "avg_max_down_pct": -1.037,
+      "avg_final_pct": 0.5065,
+      "cumulative_pct": 2.5326,
+      "median_final_pct": 0.5869,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -9481,7 +9839,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 5,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -9566,12 +9941,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 0.2571,
+      "avg_max_down_pct": -1.2853,
+      "avg_final_pct": -0.5141,
+      "cumulative_pct": -0.5141,
+      "median_final_pct": -0.5141,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -9581,7 +9956,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 1,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -11366,12 +11758,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 1.7906,
+      "avg_max_down_pct": -3.4435,
+      "avg_final_pct": -3.0303,
+      "cumulative_pct": -3.0303,
+      "median_final_pct": -3.0303,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -11381,7 +11773,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 1,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 1,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -14866,12 +15275,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 1.1561,
+      "avg_max_down_pct": -1.3487,
+      "avg_final_pct": -1.1561,
+      "cumulative_pct": -1.1561,
+      "median_final_pct": -1.1561,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -14881,7 +15290,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 1,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -14966,12 +15392,12 @@
           "value": false
         }
       ],
-      "avg_max_up_pct": null,
-      "avg_max_down_pct": null,
-      "avg_final_pct": null,
-      "cumulative_pct": null,
-      "median_final_pct": null,
-      "win_rate_pct": null,
+      "avg_max_up_pct": 4.3084,
+      "avg_max_down_pct": -4.3084,
+      "avg_final_pct": -0.6803,
+      "cumulative_pct": -0.6803,
+      "median_final_pct": -0.6803,
+      "win_rate_pct": 0.0,
       "win_definition": "買入後10個交易日內最高漲幅曾達20%",
       "strategy_avg_return_pct": null,
       "strategy_total_pnl_pct": null,
@@ -14981,7 +15407,24 @@
       "strategy_best_trade_pct": null,
       "strategy_worst_trade_pct": null,
       "strategy_complete_samples": 0,
-      "samples": 0,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma10": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        },
+        "ma20": {
+          "break_samples": 0,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": null
+        }
+      },
+      "samples": 1,
       "complete_samples": 0,
       "confidence_tier": "資料累積中",
       "official_top5_eligible": false
@@ -16037,7 +16480,80 @@
       "official_top5_eligible": false
     }
   ],
-  "global_top5": [],
-  "top5_keys": [],
-  "rank_lookup": {}
+  "global_top5": [
+    {
+      "scenario": "S2",
+      "scenario_name": "隔日跌破支撐",
+      "combo_id": "100000",
+      "combo": [
+        {
+          "name": "大盤濾網",
+          "value": true
+        },
+        {
+          "name": "年線上",
+          "value": false
+        },
+        {
+          "name": "多頭排列",
+          "value": false
+        },
+        {
+          "name": "20日均量>1萬張",
+          "value": false
+        },
+        {
+          "name": "D0量>20日均量2倍",
+          "value": false
+        },
+        {
+          "name": "D0收盤漲停",
+          "value": false
+        }
+      ],
+      "avg_max_up_pct": 1.4056,
+      "avg_max_down_pct": -0.4874,
+      "avg_final_pct": 0.5762,
+      "cumulative_pct": 26.5043,
+      "median_final_pct": 0.3145,
+      "win_rate_pct": 0.0,
+      "win_definition": "買入後10個交易日內最高漲幅曾達20%",
+      "strategy_avg_return_pct": 0.2943,
+      "strategy_total_pnl_pct": 7.3569,
+      "strategy_profit_rate_pct": 52.0,
+      "strategy_avg_win_pct": 0.9577,
+      "strategy_avg_loss_pct": -0.6366,
+      "strategy_best_trade_pct": 3.2,
+      "strategy_worst_trade_pct": -1.469,
+      "strategy_complete_samples": 25,
+      "post_ma_break_recovery": {
+        "ma5": {
+          "break_samples": 29,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma10": {
+          "break_samples": 25,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        },
+        "ma20": {
+          "break_samples": 26,
+          "recovered_20_samples": 0,
+          "recovery_to_20_pct": 0.0
+        }
+      },
+      "samples": 46,
+      "complete_samples": 0,
+      "confidence_tier": "正式統計",
+      "official_top5_eligible": true,
+      "rank": 1
+    }
+  ],
+  "top5_keys": [
+    "S2:100000"
+  ],
+  "rank_lookup": {
+    "S2:100000": 1
+  }
 }
