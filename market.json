@@ -1,12 +1,12 @@
 {
-  "updated_at": "2026-09-04 11:23:10",
+  "updated_at": "2026-09-04 11:33:05",
   "source": "TWSE MIS live",
   "taiex": {
-    "price": 46270.84,
-    "market_time": "2026-09-04 11:23:05"
+    "price": 46189.83,
+    "market_time": "2026-09-04 11:32:55"
   },
   "etf00631L": {
-    "price": 36.08,
-    "market_time": "2026-09-04 11:22:58"
+    "price": 36.03,
+    "market_time": "2026-09-04 11:32:44"
   }
 }
