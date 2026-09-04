@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-09-03 19:57:11",
+  "generated_at": "2026-09-04 12:57:04",
   "universe": 1972,
   "ok": 1959,
   "errors": 13,
@@ -7,75 +7,75 @@
     {
       "code": "6921",
       "market": "TW",
-      "error": "insufficient history: 168"
+      "error": "insufficient history: 169"
     },
     {
       "code": "7689",
       "market": "TW",
-      "error": "insufficient history: 222"
+      "error": "insufficient history: 223"
     },
     {
       "code": "7711",
       "market": "TW",
-      "error": "insufficient history: 192"
+      "error": "insufficient history: 193"
     },
     {
       "code": "7791",
       "market": "TW",
-      "error": "insufficient history: 209"
+      "error": "insufficient history: 210"
     },
     {
       "code": "7799",
       "market": "TW",
-      "error": "insufficient history: 236"
+      "error": "insufficient history: 237"
     },
     {
       "code": "7803",
       "market": "TW",
-      "error": "insufficient history: 76"
+      "error": "insufficient history: 77"
     },
     {
       "code": "7823",
       "market": "TW",
-      "error": "insufficient history: 139"
+      "error": "insufficient history: 140"
     },
     {
       "code": "7835",
       "market": "TW",
-      "error": "insufficient history: 30"
+      "error": "insufficient history: 31"
     },
     {
       "code": "7855",
       "market": "TW",
-      "error": "insufficient history: 223"
+      "error": "insufficient history: 10"
     },
     {
       "code": "3718",
       "market": "TWO",
-      "error": "insufficient history: 1"
+      "error": "insufficient history: 2"
     },
     {
       "code": "6907",
       "market": "TWO",
-      "error": "insufficient history: 143"
+      "error": "insufficient history: 144"
     },
     {
       "code": "7717",
       "market": "TWO",
-      "error": "insufficient history: 195"
+      "error": "insufficient history: 196"
     },
     {
       "code": "7794",
       "market": "TWO",
-      "error": "insufficient history: 35"
+      "error": "insufficient history: 36"
     }
   ],
   "market_filter": {
-    "price": 45857.6602,
-    "ma5": 46286.2031,
-    "ma10": 45839.4926,
-    "ma20": 45541.9959,
-    "ma240": 35410.7865,
+    "price": 46369.6211,
+    "ma5": 46388.5953,
+    "ma10": 45890.6887,
+    "ma20": 45567.5939,
+    "ma240": 35412.9197,
     "bullish_ma": true,
     "above_ma240": true,
     "filter_on": true
